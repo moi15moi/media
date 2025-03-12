@@ -31,10 +31,12 @@ import androidx.media3.common.MimeTypes;
 import androidx.media3.common.text.Cue;
 import androidx.media3.common.text.CueGroup;
 import androidx.media3.common.util.Log;
+import androidx.media3.common.util.Size;
 import androidx.media3.common.util.UnstableApi;
 import androidx.media3.common.util.Util;
 import androidx.media3.decoder.DecoderInputBuffer;
 import androidx.media3.exoplayer.BaseRenderer;
+import androidx.media3.exoplayer.ExoPlaybackException;
 import androidx.media3.exoplayer.FormatHolder;
 import androidx.media3.exoplayer.Renderer;
 import androidx.media3.exoplayer.RendererCapabilities;
@@ -247,6 +249,8 @@ public final class TextRenderer extends BaseRenderer implements Callback {
 
   @Override
   public void render(long positionUs, long elapsedRealtimeUs) {
+    Log.d("Jeremie", "Render called" + getPresentationTimeUs(positionUs));
+
     if (isCurrentStreamFinal()
         && finalStreamEndPositionUs != C.TIME_UNSET
         && positionUs >= finalStreamEndPositionUs) {
@@ -570,6 +574,19 @@ public final class TextRenderer extends BaseRenderer implements Callback {
         return true;
       default:
         throw new IllegalStateException();
+    }
+  }
+
+  @Override
+  public void handleMessage(@MessageType int messageType, @Nullable Object message)
+      throws ExoPlaybackException {
+    switch (messageType) {
+      case MSG_SET_VIDEO_OUTPUT_RESOLUTION:
+        Size surfaceSize = ((Size) message);
+        Log.d("Jeremie", "Taille surface - " + surfaceSize);
+        break;
+      default:
+        super.handleMessage(messageType, message);
     }
   }
 
