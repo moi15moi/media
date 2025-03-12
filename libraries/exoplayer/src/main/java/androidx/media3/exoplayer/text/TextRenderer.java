@@ -590,6 +590,14 @@ public final class TextRenderer extends BaseRenderer implements Callback {
         VideoSize size = (VideoSize) message;
         Log.d("Jeremie", "Taille vidéo - height=" + size.height + " width=" + size.width);
         break;
+      case MSG_EVENT_VIDEO_FORMAT_CHANGED:
+        Format videoFormat = (Format) message;
+        if (videoFormat.colorInfo != null) {
+          Log.d("Jeremie", "Couleur vidéo" + videoFormat.colorInfo.toString());
+        } else {
+          Log.d("Jeremie", "Couleur vidéo appelé, mais colorInfo null");
+        }
+        break;
       default:
         super.handleMessage(messageType, message);
     }
