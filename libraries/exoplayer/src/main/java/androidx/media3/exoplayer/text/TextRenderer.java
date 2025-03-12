@@ -28,6 +28,7 @@ import androidx.annotation.Nullable;
 import androidx.media3.common.C;
 import androidx.media3.common.Format;
 import androidx.media3.common.MimeTypes;
+import androidx.media3.common.VideoSize;
 import androidx.media3.common.text.Cue;
 import androidx.media3.common.text.CueGroup;
 import androidx.media3.common.util.Log;
@@ -584,6 +585,10 @@ public final class TextRenderer extends BaseRenderer implements Callback {
       case MSG_SET_VIDEO_OUTPUT_RESOLUTION:
         Size surfaceSize = ((Size) message);
         Log.d("Jeremie", "Taille surface - " + surfaceSize);
+        break;
+      case MSG_EVENT_VIDEO_SIZE_CHANGED:
+        VideoSize size = (VideoSize) message;
+        Log.d("Jeremie", "Taille vidéo - height=" + size.height + " width=" + size.width);
         break;
       default:
         super.handleMessage(messageType, message);
