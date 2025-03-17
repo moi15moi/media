@@ -7,6 +7,9 @@
 #include "ass/ass.h"
 #include "ass/ass_types.h"
 
+#define LOG_TAG "assNative-lib"
+#define LOGD(...) __android_log_print(ANDROID_LOG_DEBUG, LOG_TAG, __VA_ARGS__)
+#define LOGE(...) __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, __VA_ARGS__)
 
 // Fonction de rendu RGBA adaptée de mpv-player
 // Mélange les pixels des sous-titres (src) avec le buffer de destination (dst)
@@ -207,4 +210,74 @@ Java_com_example_prototypelibass_MainActivity_renderSubtitleFrame(
     AndroidBitmap_unlockPixels(env, bitmap);
 
     return bitmap;
+}
+
+// Function to initialize the ASS_Library
+extern "C"
+JNIEXPORT jlong JNICALL
+Java_androidx_media3_decoder_ass_LibassJNI_initAssLibrary(JNIEnv *env, jclass thiz) {
+  // Initialize the ASS_Library
+  ASS_Library *library = ass_library_init();
+  if (!library) {
+    LOGE("Failed to initialize ASS_Library");
+    return reinterpret_cast<jlong>(nullptr);
+  }
+  LOGD("ASS_Library initialized successfully");
+  return reinterpret_cast<jlong>(library);
+}
+
+// Destroy ASS_Library
+extern "C"
+JNIEXPORT void JNICALL
+Java_androidx_media3_decoder_ass_LibassJNI_destroyAssLibrary(JNIEnv *env, jclass clazz, jlong ass_library_ptr) {
+  ASS_Library *library = reinterpret_cast<ASS_Library *>(ass_library_ptr);
+  if (library) {
+    ass_library_done(library);
+    LOGD("ASS_Library destroyed successfully");
+  } else {
+    LOGE("ASS_Library pointer is null during destruction");
+  }
+}
+
+// add fonts to the library
+extern "C"
+JNIEXPORT void JNICALL
+Java_androidx_media3_decoder_ass_LibassJNI_addFont(
+    JNIEnv *env,
+    jobject thiz,
+    jlong ass_library_ptr,
+    jstring font_name,
+    jbyteArray font_data
+) {
+  // Convert jlong back to ASS_Library pointer
+  ASS_Library *library = reinterpret_cast<ASS_Library *>(ass_library_ptr);
+  if (!library) {
+    LOGE("ASS_Library pointer is null");
+    return;
+  }
+
+  // Convert jstring to const char *
+  const char *name = env->GetStringUTFChars(font_name, nullptr);
+  if (!name) {
+    LOGE("Failed to convert font name to UTF-8");
+    return;
+  }
+  LOGD("Adding font: %s", name);
+
+  // Convert jbyteArray to const char *
+  jbyte *data = env->GetByteArrayElements(font_data, nullptr);
+  if (!data) {
+    LOGE("Failed to get font data from byte array");
+    env->ReleaseStringUTFChars(font_name, name);
+    return;
+  }
+  jsize data_size = env->GetArrayLength(font_data);
+  LOGD("Font data size: %d bytes", data_size);
+
+  ass_add_font(library, name, reinterpret_cast<const char *>(data), data_size);
+  LOGD("Font added successfully: %s", name);
+
+  // Release the JNI resources
+  env->ReleaseStringUTFChars(font_name, name);
+  env->ReleaseByteArrayElements(font_data, data, 0);
 }

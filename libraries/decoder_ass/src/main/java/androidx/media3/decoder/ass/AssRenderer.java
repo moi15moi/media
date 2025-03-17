@@ -20,6 +20,7 @@ import static androidx.media3.common.util.Assertions.checkState;
 import static java.lang.annotation.ElementType.TYPE_USE;
 import static java.nio.charset.StandardCharsets.UTF_8;
 
+import android.graphics.Typeface;
 import android.os.Handler;
 import android.os.Handler.Callback;
 import android.os.Looper;
@@ -28,6 +29,7 @@ import androidx.annotation.IntDef;
 import androidx.annotation.Nullable;
 import androidx.media3.common.C;
 import androidx.media3.common.Format;
+import androidx.media3.common.Metadata;
 import androidx.media3.common.MimeTypes;
 import androidx.media3.common.VideoSize;
 import androidx.media3.common.text.Cue;
@@ -47,19 +49,24 @@ import androidx.media3.exoplayer.source.MediaSource;
 import androidx.media3.exoplayer.source.SampleStream.ReadDataResult;
 import androidx.media3.exoplayer.text.SubtitleDecoderFactory;
 import androidx.media3.exoplayer.text.TextOutput;
+import androidx.media3.extractor.mkv.FontMetadataEntry;
 import androidx.media3.extractor.text.CueDecoder;
 import androidx.media3.extractor.text.SubtitleDecoder;
 import androidx.media3.extractor.text.SubtitleDecoderException;
 import androidx.media3.extractor.text.SubtitleOutputBuffer;
 import com.google.common.collect.ImmutableList;
+import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.lang.annotation.Documented;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 import java.nio.ByteBuffer;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 import org.checkerframework.dataflow.qual.SideEffectFree;
 
 /**
@@ -119,7 +126,8 @@ public final class AssRenderer extends BaseRenderer implements Callback {
   private long lastRendererPositionUs;
   private long finalStreamEndPositionUs;
   @Nullable private IOException streamError;
-
+  @Nullable private LibassJNI libassJNI;
+  private final Set<Long> processedFontUids;
 
   /**
    * @param output The output.
@@ -161,6 +169,8 @@ public final class AssRenderer extends BaseRenderer implements Callback {
     formatHolder = new FormatHolder();
     finalStreamEndPositionUs = C.TIME_UNSET;
     lastRendererPositionUs = C.TIME_UNSET;
+    this.libassJNI = null;
+    this.processedFontUids = new HashSet<>();
   }
 
   @Override
@@ -202,6 +212,27 @@ public final class AssRenderer extends BaseRenderer implements Callback {
       MediaSource.MediaPeriodId mediaPeriodId) {
       // TODO
     streamFormat = formats[0];
+    Metadata metadata = streamFormat.metadata; // Access the metadata
+
+    // Process font metadata
+    if (metadata != null) {
+      maybeInitLibassJNI();
+      for (int i = 0; i < metadata.length(); i++) {
+        Metadata.Entry entry = metadata.get(i);
+        if (entry instanceof FontMetadataEntry) {
+          FontMetadataEntry fontEntry = (FontMetadataEntry) entry;
+          long uid = fontEntry.getUid();
+          if (processedFontUids.contains(uid)) {
+            continue;
+          }
+
+          String fontFileName = fontEntry.getFileName();
+          byte[] fontData = fontEntry.getFontData();
+          libassJNI.loadFont(fontFileName, fontData);
+          processedFontUids.add(uid);
+        }
+      }
+    }
     /*
     this.cuesResolver =
         streamFormat.cueReplacementBehavior == Format.CUE_REPLACEMENT_BEHAVIOR_MERGE
@@ -209,6 +240,7 @@ public final class AssRenderer extends BaseRenderer implements Callback {
             : new ReplacingCuesResolver();
      */
   }
+
 
   @Override
   protected void onPositionReset(long positionUs, boolean joining) {
@@ -229,6 +261,14 @@ public final class AssRenderer extends BaseRenderer implements Callback {
     }*/
   }
 
+  public void maybeInitLibassJNI() {
+    if (this.libassJNI != null) {
+      return;
+    }
+
+    this.libassJNI = new LibassJNI();
+  }
+
   @Override
   public void render(long positionUs, long elapsedRealtimeUs) {
     if (isCurrentStreamFinal()
@@ -241,6 +281,8 @@ public final class AssRenderer extends BaseRenderer implements Callback {
     if (outputStreamEnded) {
       return;
     }
+
+    maybeInitLibassJNI();
 
     // TODO
     @ReadDataResult
