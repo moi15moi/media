@@ -280,9 +280,7 @@ public final class AssRenderer extends BaseRenderer implements Callback {
       case C.RESULT_FORMAT_READ:
         List<byte[]> assHeaders = formatHolder.format.initializationData;
         // TODO
-        // Je ne sais pas pourquoi, mais on reçoit assHeaders est une liste de 2 headers
-        // Il semblerait que ce soit toujours le dernier élément du assHeaders qui contiennent réellement le header.
-        // À investiguer
+        // Le premier élément est le SSA_DIALOGUE_FORMAT, donc sera toujours là. On peut juste prendre le deuxième sans problèmes.
         // De plus, appeler [ass_process_codec_private](https://github.com/libass/libass/blob/1b699559025185e34d21a24cac477ca360cb917d/libass/ass.h#L707-L714)
         for (byte[] header: assHeaders) {
           String headerText = new String(header, UTF_8);
