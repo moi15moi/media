@@ -124,6 +124,7 @@ public final class AssRenderer extends BaseRenderer implements Callback {
   private long lastRendererPositionUs;
   private long finalStreamEndPositionUs;
   @Nullable private IOException streamError;
+  private long assLibraryPtr;
 
 
   /**
@@ -166,6 +167,16 @@ public final class AssRenderer extends BaseRenderer implements Callback {
     formatHolder = new FormatHolder();
     finalStreamEndPositionUs = C.TIME_UNSET;
     lastRendererPositionUs = C.TIME_UNSET;
+
+
+    if (AssLibrary.isAvailable()) {
+      assLibraryPtr = AssLibrary.initAssLibrary();
+      if (assLibraryPtr == 0) {
+        throw new RuntimeException("Failed to initialize ASS_Library");
+      }
+    } else {
+      throw new RuntimeException("Native library not available");
+    }
   }
 
   @Override
@@ -209,27 +220,15 @@ public final class AssRenderer extends BaseRenderer implements Callback {
     streamFormat = formats[0];
     Metadata metadata = streamFormat.metadata; // Access the metadata
 
-    // Temporary just to check the font metaData from the Format object
+    // Process font metadata
     if (metadata != null) {
-      // Iterate over the metadata entries to find font data
       for (int i = 0; i < metadata.length(); i++) {
         Metadata.Entry entry = metadata.get(i);
         if (entry instanceof FontMetadataEntry) {
           FontMetadataEntry fontEntry = (FontMetadataEntry) entry;
-          // Log the font file name and type
           String fontFileName = fontEntry.getFileName();
-          String fontType = getFontType(fontFileName); // Extract file extension
-          Log.d("Sonny - assRenderer", "Found font file: " + fontFileName + " (Type: " + fontType + ")");
-
-          // Validate the font data
           byte[] fontData = fontEntry.getFontData();
-          if (isFontDataValid(fontData, fontType)) {
-            Log.d("Sonny - assRenderer", "Font data is valid: " + fontFileName);
-            // Process the font data (e.g., load the font into memory)
-            loadFont(fontFileName, fontData); // Implement this method to handle the font
-          } else {
-            Log.e("Sonny - assRenderer", "Invalid font data: " + fontFileName);
-          }
+            loadFont(fontFileName, fontData);
         }
       }
     }
@@ -240,89 +239,37 @@ public final class AssRenderer extends BaseRenderer implements Callback {
             : new ReplacingCuesResolver();
      */
   }
-  // Temporary helpers for the fonts logs. ----------------------------------------------
-  /**
-   * Extracts the font type (file extension) from the file name.
-   *
-   * @param fileName The name of the font file.
-   * @return The font type (e.g., "ttf", "ttc", "otf").
-   */
-  private String getFontType(String fileName) {
-    if (fileName == null || fileName.isEmpty()) {
-      return "unknown";
-    }
-    int lastDotIndex = fileName.lastIndexOf('.');
-    if (lastDotIndex == -1) {
-      return "unknown";
-    }
-    return fileName.substring(lastDotIndex + 1).toLowerCase();
-  }
 
   /**
-   * Validates the font data by checking its magic number.
+   * Adds a font to the ASS_Library.
    *
+   * @param assLibraryPtr The pointer to the native ASS_Library instance.
+   * @param fontName The name of the font.
    * @param fontData The raw byte data of the font.
-   * @param fontType The type of the font (e.g., "ttf", "otf", "ttc").
-   * @return True if the font data is valid, false otherwise.
    */
-  private boolean isFontDataValid(byte[] fontData, String fontType) {
-    if (fontData == null || fontData.length < 4) {
-      return false; // Not enough data to check
-    }
-
-    // Check the magic number based on the font type
-    switch (fontType) {
-      case "ttf":
-        // TrueType Font: First 4 bytes should be 0x00 0x01 0x00 0x00
-        return fontData[0] == 0x00 && fontData[1] == 0x01 && fontData[2] == 0x00 && fontData[3] == 0x00;
-      case "otf":
-        // OpenType Font: First 4 bytes should be "OTTO"
-        return fontData[0] == 'O' && fontData[1] == 'T' && fontData[2] == 'T' && fontData[3] == 'O';
-      case "ttc":
-        // TrueType Collection: First 4 bytes should be "ttcf"
-        return fontData[0] == 't' && fontData[1] == 't' && fontData[2] == 'c' && fontData[3] == 'f';
-      default:
-        Log.w("Sonny - assRenderer", "Unsupported font type: " + fontType);
-        return false;
-    }
-  }
+  private native void addFont(long assLibraryPtr, String fontName, byte[] fontData);
 
   /**
-   * Loads a font from its raw byte data.
+   * Loads a font from its raw byte data and adds it to the ASS_Library.
    *
    * @param fileName The name of the font file.
    * @param fontData The raw byte data of the font.
    */
   private void loadFont(String fileName, byte[] fontData) {
-    // Android's Typeface class to create a Typeface from the byte array || Subject to change, might not use TypeFace not sure yet...
+    // Ensure the native library is available
+    if (!AssLibrary.isAvailable()) {
+      Log.e("AssRenderer", "Native library not available");
+      return;
+    }
+
+    // Call the native method to add the font to the ASS_Library
     try {
-      Typeface typeface = Typeface.createFromFile(createTempFontFile(fileName, fontData));
-      Log.d("Sonny - FntLdr", "Successfully loaded font: " + fileName);
-      // To-Do Store the Typeface for later use in rendering text
-
-      // (e.g., in a Map<String, Typeface> where the key is the font file name)
-    } catch (IOException e) {
-      Log.e("Sonny - FntLdr", "Failed to load font: " + fileName, e);
+      addFont(assLibraryPtr, fileName, fontData);
+      Log.d("AssRenderer", "Successfully added font to ASS_Library: " + fileName);
+    } catch (Exception e) {
+      Log.e("AssRenderer", "Failed to add font to ASS_Library: " + fileName, e);
     }
   }
-
-  /**
-   * Creates a temporary file for the font data.
-   *
-   * @param fileName The name of the font file.
-   * @param fontData The raw byte data of the font.
-   * @return The temporary file.
-   * @throws IOException If the file cannot be created.
-   */
-  private File createTempFontFile(String fileName, byte[] fontData) throws IOException {
-    File tempFile = File.createTempFile("font_", fileName);
-    try (FileOutputStream outputStream = new FileOutputStream(tempFile)) {
-      outputStream.write(fontData);
-    }
-    Log.d("Sonny - FntLdr", "Created temporary font file: " + tempFile.getAbsolutePath());
-    return tempFile;
-  }
-  // (END) Temporary helpers for the fonts logs. ----------------------------------------------
 
   @Override
   protected void onPositionReset(long positionUs, boolean joining) {
@@ -415,6 +362,11 @@ public final class AssRenderer extends BaseRenderer implements Callback {
     lastRendererPositionUs = C.TIME_UNSET;
     if (subtitleDecoder != null) {
       releaseSubtitleDecoder();
+    }
+    // Clean up the ASS_Library
+    if (assLibraryPtr != 0) {
+      AssLibrary.destroyAssLibrary(assLibraryPtr);
+      assLibraryPtr = 0;
     }
   }
 

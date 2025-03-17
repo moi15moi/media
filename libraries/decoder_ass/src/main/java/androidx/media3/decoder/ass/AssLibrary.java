@@ -52,4 +52,17 @@ public final class AssLibrary {
   public static boolean isAvailable() {
     return LOADER.isAvailable();
   }
+
+  /**
+   * Initializes the native ASS_Library and returns its pointer as a long.
+   * This pointer must be passed to native methods that require it.
+   */
+  public static native long initAssLibrary();
+
+  /**
+   * Destroys the native ASS_Library instance.
+   *
+   * @param assLibraryPtr The pointer to the native ASS_Library instance.
+   */
+  public static native void destroyAssLibrary(long assLibraryPtr);
 }
