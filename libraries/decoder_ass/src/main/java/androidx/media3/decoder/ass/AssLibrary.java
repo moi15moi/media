@@ -50,8 +50,6 @@ public final class AssLibrary {
 
   /** Returns whether the underlying library is available, loading it if necessary. */
   public static boolean isAvailable() {
-    // TODO Correct this
-    // return LOADER.isAvailable();
-    return true;
+    return LOADER.isAvailable();
   }
 }
