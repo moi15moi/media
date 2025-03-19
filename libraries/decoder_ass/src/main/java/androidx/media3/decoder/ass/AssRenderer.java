@@ -252,6 +252,7 @@ public final class AssRenderer extends BaseRenderer implements Callback {
           return;
         }
         cueDecoderInputBuffer.flip();
+        long subtitleStartTimestamp = getPresentationTimeUs(cueDecoderInputBuffer.timeUs);
         ByteBuffer textData = checkNotNull(cueDecoderInputBuffer.data);
         String lineText = new String(textData.array(), textData.position(), textData.remaining(), UTF_8);
         Log.d(this.getName(), "Le texte reçu est " + lineText);
