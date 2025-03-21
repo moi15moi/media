@@ -3,6 +3,7 @@ package androidx.media3.decoder.ass;
 public class LibassJNI {
   private final long assLibraryPtr;
   private final long assRendererPtr;
+  private final long assTrackPtr;
 
   public LibassJNI() {
     if (!AssLibrary.isAvailable()) {
@@ -14,9 +15,29 @@ public class LibassJNI {
       throw new RuntimeException("Failed to initialize ASS_Library");
     }
 
+    assTrackPtr = createTrackNative(assLibraryPtr);
+    if (assTrackPtr == 0) {
+      destroyAssLibrary(assLibraryPtr);
+      throw new RuntimeException("Failed to create ASS_Track");
+    }
+
     assRendererPtr = initAssRenderer(assLibraryPtr);
     if (assRendererPtr == 0) {
       throw new RuntimeException("Failed to initialize ASS_Renderer");
+    }
+  }
+
+  /**
+   * Processes codec private data (subtitle headers) from a subtitle stream.
+   * This is typically called with the codec initialization data from the container.
+   *
+   * @param data The codec private data bytes.
+   */
+  public void processCodecPrivate(byte[] data) {
+    if (assTrackPtr != 0) {
+      processCodecPrivateNative(assTrackPtr, data);
+    } else {
+      Log.e(TAG, "Cannot process codec private data: track not initialized");
     }
   }
 
@@ -53,6 +74,9 @@ public class LibassJNI {
   @Override
   protected void finalize() throws Throwable {
     try {
+      if (assTrackPtr != 0) {
+        destroyTrackNative(assTrackPtr);
+      }
       if (assRendererPtr != 0) {
         destroyAssRenderer(assRendererPtr);
       }
@@ -119,4 +143,8 @@ public class LibassJNI {
    * @param height The height of the storage in pixels.
    */
   private native void setStorageSizeNative(long assRendererPtr, int width, int height);
+
+  private native long createTrackNative(long assLibraryPtr);
+  private native void destroyTrackNative(long assTrackPtr);
+  private native void processCodecPrivateNative(long assTrackPtr, byte[] data);
 }

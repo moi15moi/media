@@ -317,13 +317,25 @@ public final class AssRenderer extends BaseRenderer implements Callback {
         cueDecoderInputBuffer.clear();
         break;
       case C.RESULT_FORMAT_READ:
+        assert libassJNI != null;
+        assert formatHolder.format != null;
+
         List<byte[]> assHeaders = formatHolder.format.initializationData;
-        // TODO
-        // Le premier élément est le SSA_DIALOGUE_FORMAT, donc sera toujours là. On peut juste prendre le deuxième sans problèmes.
-        // De plus, appeler [ass_process_codec_private](https://github.com/libass/libass/blob/1b699559025185e34d21a24cac477ca360cb917d/libass/ass.h#L707-L714)
-        for (byte[] header: assHeaders) {
-          String headerText = new String(header, UTF_8);
-          Log.d(TAG, "Le header reçu est " + headerText);
+
+        // Process headers
+        if (assHeaders.size() >= 2) {
+          // Log the headers for debugging
+          for (byte[] header : assHeaders) {
+            String headerText = new String(header, UTF_8);
+            Log.d(TAG, "Header received: " + headerText);
+          }
+
+          // Process codec private data with libass
+          // The second element contains the actual ASS header information
+          if (assHeaders.size() >= 2) {
+            Log.d(TAG, "Processing codec private data");
+            libassJNI.processCodecPrivate(assHeaders.get(1));
+          }
         }
         break;
       case C.RESULT_NOTHING_READ:
