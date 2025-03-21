@@ -423,6 +423,8 @@ public final class AssRenderer extends BaseRenderer implements Callback {
       throws ExoPlaybackException {
     maybeInitLibassJNI();
 
+    assert (libassJNI != null);
+
     switch (messageType) {
       case MSG_SET_VIDEO_OUTPUT_RESOLUTION:
         Size surfaceSize = (Size) checkNotNull(message, "Surface size message cannot be null");

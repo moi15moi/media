@@ -1,6 +1,9 @@
 package androidx.media3.decoder.ass;
 
+import androidx.media3.common.util.Log;
+
 public class LibassJNI {
+  private static final String TAG = "LibassJNI";
   private final long assLibraryPtr;
   private final long assRendererPtr;
 
@@ -16,6 +19,7 @@ public class LibassJNI {
 
     assRendererPtr = initAssRenderer(assLibraryPtr);
     if (assRendererPtr == 0) {
+      destroyAssLibrary(assLibraryPtr);
       throw new RuntimeException("Failed to initialize ASS_Renderer");
     }
   }
@@ -27,7 +31,11 @@ public class LibassJNI {
    * @param height The height of the frame in pixels.
    */
   public void setFrameSize(int width, int height) {
+    if (assRendererPtr != 0) {
       setFrameSizeNative(assRendererPtr, width, height);
+    } else {
+      Log.e(TAG, "Impossible to call setFrameSizeNative: assRendererPtr has not been initialized.");
+    }
   }
 
   /**
@@ -37,7 +45,11 @@ public class LibassJNI {
    * @param height The height of the storage in pixels.
    */
   public void setStorageSize(int width, int height) {
+    if (assRendererPtr != 0) {
       setStorageSizeNative(assRendererPtr, width, height);
+    } else {
+      Log.e(TAG, "Impossible to call setStorageNative: assRendererPtr has not been initialized.");
+    }
   }
 
   /**

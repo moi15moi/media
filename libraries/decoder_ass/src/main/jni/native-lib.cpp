@@ -293,16 +293,16 @@ Java_androidx_media3_decoder_ass_LibassJNI_addFont(
 extern "C"
 JNIEXPORT jlong JNICALL
 Java_androidx_media3_decoder_ass_LibassJNI_initAssRenderer(JNIEnv *env, jobject thiz, jlong ass_library_ptr) {
-  ASS_Library *library = reinterpret_cast<ASS_Library *>(ass_library_ptr);
+  auto *library = reinterpret_cast<ASS_Library *>(ass_library_ptr);
   if (!library) {
     LOGE("ASS_Library pointer is null during renderer initialization");
-    return reinterpret_cast<jlong>(nullptr);;
+    return 0;
   }
 
   ASS_Renderer *renderer = ass_renderer_init(library);
   if (!renderer) {
     LOGE("Failed to initialize ASS_Renderer");
-    return reinterpret_cast<jlong>(nullptr);;
+    return 0;
   }
 
   // Basic configuration of the renderer
@@ -322,7 +322,7 @@ Java_androidx_media3_decoder_ass_LibassJNI_initAssRenderer(JNIEnv *env, jobject 
 extern "C"
 JNIEXPORT void JNICALL
 Java_androidx_media3_decoder_ass_LibassJNI_destroyAssRenderer(JNIEnv *env, jobject thiz, jlong ass_renderer_ptr) {
-  ASS_Renderer *renderer = reinterpret_cast<ASS_Renderer *>(ass_renderer_ptr);
+  auto *renderer = reinterpret_cast<ASS_Renderer *>(ass_renderer_ptr);
   if (renderer) {
     ass_renderer_done(renderer);
     LOGD("ASS_Renderer destroyed successfully");
@@ -345,7 +345,7 @@ JNIEXPORT void JNICALL
 Java_androidx_media3_decoder_ass_LibassJNI_setFrameSizeNative(JNIEnv *env, jobject thiz, jlong ass_renderer_ptr, jint width, jint height) {
   LOGD("setFrameSizeNative called with renderer=%p, width=%d, height=%d", (void*)ass_renderer_ptr, width, height);
 
-  ASS_Renderer *renderer = reinterpret_cast<ASS_Renderer *>(ass_renderer_ptr);
+  auto *renderer = reinterpret_cast<ASS_Renderer *>(ass_renderer_ptr);
   if (!renderer) {
     LOGE("ASS_Renderer pointer is null when setting frame size");
     return;
@@ -368,7 +368,7 @@ Java_androidx_media3_decoder_ass_LibassJNI_setFrameSizeNative(JNIEnv *env, jobje
 extern "C"
 JNIEXPORT void JNICALL
 Java_androidx_media3_decoder_ass_LibassJNI_setStorageSizeNative(JNIEnv *env, jobject thiz, jlong ass_renderer_ptr, jint width, jint height) {
-  ASS_Renderer *renderer = reinterpret_cast<ASS_Renderer *>(ass_renderer_ptr);
+  auto *renderer = reinterpret_cast<ASS_Renderer *>(ass_renderer_ptr);
   if (!renderer) {
     LOGE("ASS_Renderer pointer is null when setting storage size");
     return;
