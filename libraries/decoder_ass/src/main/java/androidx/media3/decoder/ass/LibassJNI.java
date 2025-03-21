@@ -3,7 +3,9 @@ package androidx.media3.decoder.ass;
 import androidx.media3.common.util.Log;
 
 public class LibassJNI {
-  private long assLibraryPtr;
+  private static final String TAG = "LibassJNI";
+  private final long assLibraryPtr;
+  private final long assRendererPtr;
 
   public LibassJNI() {
     if (!AssLibrary.isAvailable()) {
@@ -13,6 +15,40 @@ public class LibassJNI {
     assLibraryPtr = initAssLibrary();
     if (assLibraryPtr == 0) {
       throw new RuntimeException("Failed to initialize ASS_Library");
+    }
+
+    assRendererPtr = initAssRenderer(assLibraryPtr);
+    if (assRendererPtr == 0) {
+      destroyAssLibrary(assLibraryPtr);
+      throw new RuntimeException("Failed to initialize ASS_Renderer");
+    }
+  }
+
+  /**
+   * Sets the frame size for the ASS_Renderer.
+   *
+   * @param width The width of the frame in pixels.
+   * @param height The height of the frame in pixels.
+   */
+  public void setFrameSize(int width, int height) {
+    if (assRendererPtr != 0) {
+      setFrameSizeNative(assRendererPtr, width, height);
+    } else {
+      Log.e(TAG, "Impossible to call setFrameSizeNative: assRendererPtr has not been initialized.");
+    }
+  }
+
+  /**
+   * Sets the storage size for the ASS_Renderer.
+   *
+   * @param width The width of the storage in pixels.
+   * @param height The height of the storage in pixels.
+   */
+  public void setStorageSize(int width, int height) {
+    if (assRendererPtr != 0) {
+      setStorageSizeNative(assRendererPtr, width, height);
+    } else {
+      Log.e(TAG, "Impossible to call setStorageNative: assRendererPtr has not been initialized.");
     }
   }
 
@@ -29,6 +65,9 @@ public class LibassJNI {
   @Override
   protected void finalize() throws Throwable {
     try {
+      if (assRendererPtr != 0) {
+        destroyAssRenderer(assRendererPtr);
+      }
       if (assLibraryPtr != 0) {
         destroyAssLibrary(assLibraryPtr);
       }
@@ -58,4 +97,38 @@ public class LibassJNI {
    * @param assLibraryPtr The pointer to the native ASS_Library instance.
    */
   private native void destroyAssLibrary(long assLibraryPtr);
+
+  /**
+   * Initializes the native ASS_Renderer and returns its pointer as a long.
+   * This pointer must be passed to native methods that require it.
+   *
+   * @param assLibraryPtr The pointer to the native ASS_Library instance.
+   * @return The pointer to the native ASS_Renderer instance.
+   */
+  private native long initAssRenderer(long assLibraryPtr);
+
+  /**
+   * Destroys the native ASS_Renderer instance.
+   *
+   * @param assRendererPtr The pointer to the native ASS_Renderer instance.
+   */
+  private native void destroyAssRenderer(long assRendererPtr);
+
+  /**
+   * Sets the frame size for the ASS_Renderer.
+   *
+   * @param assRendererPtr The pointer to the native ASS_Renderer instance.
+   * @param width The width of the frame in pixels.
+   * @param height The height of the frame in pixels.
+   */
+  private native void setFrameSizeNative(long assRendererPtr, int width, int height);
+
+  /**
+   * Sets the storage size for the ASS_Renderer.
+   *
+   * @param assRendererPtr The pointer to the native ASS_Renderer instance.
+   * @param width The width of the storage in pixels.
+   * @param height The height of the storage in pixels.
+   */
+  private native void setStorageSizeNative(long assRendererPtr, int width, int height);
 }

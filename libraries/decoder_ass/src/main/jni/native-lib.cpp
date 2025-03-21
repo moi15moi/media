@@ -281,3 +281,99 @@ Java_androidx_media3_decoder_ass_LibassJNI_addFont(
   env->ReleaseStringUTFChars(font_name, name);
   env->ReleaseByteArrayElements(font_data, data, 0);
 }
+
+/**
+ * Initializes the ASS_Renderer instance.
+ *
+ * @param env The JNI environment pointer.
+ * @param thiz The Java object calling this function.
+ * @param ass_library_ptr The pointer to the ASS_Library instance.
+ * @return The pointer to the initialized ASS_Renderer instance, or 0 if initialization fails.
+ */
+extern "C"
+JNIEXPORT jlong JNICALL
+Java_androidx_media3_decoder_ass_LibassJNI_initAssRenderer(JNIEnv *env, jobject thiz, jlong ass_library_ptr) {
+  auto *library = reinterpret_cast<ASS_Library *>(ass_library_ptr);
+  if (!library) {
+    LOGE("ASS_Library pointer is null during renderer initialization");
+    return 0;
+  }
+
+  ASS_Renderer *renderer = ass_renderer_init(library);
+  if (!renderer) {
+    LOGE("Failed to initialize ASS_Renderer");
+    return 0;
+  }
+
+  // Basic configuration of the renderer
+  ass_set_fonts(renderer, NULL, NULL, ASS_FONTPROVIDER_AUTODETECT, NULL, 1);
+
+  LOGD("ASS_Renderer initialized successfully");
+  return reinterpret_cast<jlong>(renderer);
+}
+
+/**
+ * Destroys the ASS_Renderer instance.
+ *
+ * @param env The JNI environment pointer.
+ * @param thiz The Java object calling this function.
+ * @param ass_renderer_ptr The pointer to the ASS_Renderer instance.
+ */
+extern "C"
+JNIEXPORT void JNICALL
+Java_androidx_media3_decoder_ass_LibassJNI_destroyAssRenderer(JNIEnv *env, jobject thiz, jlong ass_renderer_ptr) {
+  auto *renderer = reinterpret_cast<ASS_Renderer *>(ass_renderer_ptr);
+  if (renderer) {
+    ass_renderer_done(renderer);
+    LOGD("ASS_Renderer destroyed successfully");
+  } else {
+    LOGE("ASS_Renderer pointer is null during destruction");
+  }
+}
+
+/**
+ * Sets the frame size for the ASS_Renderer.
+ *
+ * @param env The JNI environment pointer.
+ * @param thiz The Java object calling this function.
+ * @param ass_renderer_ptr The pointer to the ASS_Renderer instance.
+ * @param width The width of the frame in pixels.
+ * @param height The height of the frame in pixels.
+ */
+extern "C"
+JNIEXPORT void JNICALL
+Java_androidx_media3_decoder_ass_LibassJNI_setFrameSizeNative(JNIEnv *env, jobject thiz, jlong ass_renderer_ptr, jint width, jint height) {
+  LOGD("setFrameSizeNative called with renderer=%p, width=%d, height=%d", (void*)ass_renderer_ptr, width, height);
+
+  auto *renderer = reinterpret_cast<ASS_Renderer *>(ass_renderer_ptr);
+  if (!renderer) {
+    LOGE("ASS_Renderer pointer is null when setting frame size");
+    return;
+  }
+
+  LOGD("Calling ass_set_frame_size...");
+  ass_set_frame_size(renderer, width, height);
+  LOGD("ass_set_frame_size completed successfully");
+}
+
+/**
+ * Sets the storage size for the ASS_Renderer.
+ *
+ * @param env The JNI environment pointer.
+ * @param thiz The Java object calling this function.
+ * @param ass_renderer_ptr The pointer to the ASS_Renderer instance.
+ * @param width The width of the storage in pixels.
+ * @param height The height of the storage in pixels.
+ */
+extern "C"
+JNIEXPORT void JNICALL
+Java_androidx_media3_decoder_ass_LibassJNI_setStorageSizeNative(JNIEnv *env, jobject thiz, jlong ass_renderer_ptr, jint width, jint height) {
+  auto *renderer = reinterpret_cast<ASS_Renderer *>(ass_renderer_ptr);
+  if (!renderer) {
+    LOGE("ASS_Renderer pointer is null when setting storage size");
+    return;
+  }
+
+  ass_set_storage_size(renderer, width, height);
+  LOGD("Storage size set to %d x %d", width, height);
+}

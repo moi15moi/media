@@ -20,7 +20,6 @@ import static androidx.media3.common.util.Assertions.checkState;
 import static java.lang.annotation.ElementType.TYPE_USE;
 import static java.nio.charset.StandardCharsets.UTF_8;
 
-import android.graphics.Typeface;
 import android.os.Handler;
 import android.os.Handler.Callback;
 import android.os.Looper;
@@ -50,13 +49,10 @@ import androidx.media3.exoplayer.source.SampleStream.ReadDataResult;
 import androidx.media3.exoplayer.text.SubtitleDecoderFactory;
 import androidx.media3.exoplayer.text.TextOutput;
 import androidx.media3.extractor.mkv.FontMetadataEntry;
-import androidx.media3.extractor.text.CueDecoder;
 import androidx.media3.extractor.text.SubtitleDecoder;
 import androidx.media3.extractor.text.SubtitleDecoderException;
 import androidx.media3.extractor.text.SubtitleOutputBuffer;
 import com.google.common.collect.ImmutableList;
-import java.io.File;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.lang.annotation.Documented;
 import java.lang.annotation.Retention;
@@ -297,7 +293,7 @@ public final class AssRenderer extends BaseRenderer implements Callback {
         long subtitleStartTimestamp = getPresentationTimeUs(cueDecoderInputBuffer.timeUs);
         ByteBuffer textData = checkNotNull(cueDecoderInputBuffer.data);
         String lineText = new String(textData.array(), textData.position(), textData.remaining(), UTF_8);
-        Log.d(this.getName(), "Le texte reçu est " + lineText);
+        Log.d(TAG, "Le texte reçu est " + lineText);
         // TODO
         // Le texte qu'on reçoit n'est pas exactement celui du sous-titres.
         // Ex:
@@ -327,7 +323,7 @@ public final class AssRenderer extends BaseRenderer implements Callback {
         // De plus, appeler [ass_process_codec_private](https://github.com/libass/libass/blob/1b699559025185e34d21a24cac477ca360cb917d/libass/ass.h#L707-L714)
         for (byte[] header: assHeaders) {
           String headerText = new String(header, UTF_8);
-          Log.d(this.getName(), "Le header reçu est " + headerText);
+          Log.d(TAG, "Le header reçu est " + headerText);
         }
         break;
       case C.RESULT_NOTHING_READ:
@@ -425,23 +421,32 @@ public final class AssRenderer extends BaseRenderer implements Callback {
   @Override
   public void handleMessage(@MessageType int messageType, @Nullable Object message)
       throws ExoPlaybackException {
+    maybeInitLibassJNI();
+
+    assert (libassJNI != null);
+
     switch (messageType) {
       case MSG_SET_VIDEO_OUTPUT_RESOLUTION:
-        Size surfaceSize = ((Size) message);
-        Log.d(this.getName(), "Taille surface - " + surfaceSize);
+        Size surfaceSize = (Size) checkNotNull(message, "Surface size message cannot be null");
+        Log.d(TAG, "Surface: " + surfaceSize.getWidth() + "x" + surfaceSize.getHeight());
+        libassJNI.setFrameSize(surfaceSize.getWidth(), surfaceSize.getHeight());
         break;
+
       case MSG_EVENT_VIDEO_SIZE_CHANGED:
-        VideoSize size = (VideoSize) message;
-        Log.d(this.getName(), "Taille vidéo - height=" + size.height + " width=" + size.width);
+        VideoSize videoSize = (VideoSize) checkNotNull(message, "Video size message cannot be null");
+        Log.d(TAG, "Vidéo: " + videoSize.width + "x" + videoSize.height);
+        libassJNI.setStorageSize(videoSize.width, videoSize.height);
         break;
+
       case MSG_EVENT_VIDEO_FORMAT_CHANGED:
-        Format videoFormat = (Format) message;
+        Format videoFormat = (Format) checkNotNull(message, "Video format message cannot be null");
         if (videoFormat.colorInfo != null) {
-          Log.d(this.getName(), "Couleur vidéo" + videoFormat.colorInfo.toString());
+          Log.d(TAG, "videoFormat.colorInfo = " + videoFormat.colorInfo);
         } else {
-          Log.d(this.getName(), "Couleur vidéo appelé, mais colorInfo null");
+          Log.d(TAG, "The video format does not have a defined color info.");
         }
         break;
+
       default:
         super.handleMessage(messageType, message);
     }
