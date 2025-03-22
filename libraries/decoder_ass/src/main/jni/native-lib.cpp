@@ -453,7 +453,7 @@ Java_androidx_media3_decoder_ass_LibassJNI_processCodecPrivateNative(JNIEnv *env
   ass_process_codec_private(track, reinterpret_cast<const char *>(data_bytes), data_size);
 
   // Release the JNI resources
-  env->ReleaseByteArrayElements(data, data_bytes, JNI_ABORT);
+  env->ReleaseByteArrayElements(data, data_bytes, JNI_OK);
 
   LOGD("Codec private data processed successfully");
 }
