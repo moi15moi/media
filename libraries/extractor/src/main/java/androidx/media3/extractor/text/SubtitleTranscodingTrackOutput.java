@@ -93,7 +93,6 @@ public final class SubtitleTranscodingTrackOutput implements TrackOutput {
     checkNotNull(format.sampleMimeType);
     checkArgument(MimeTypes.getTrackType(format.sampleMimeType) == C.TRACK_TYPE_TEXT);
     if (!format.equals(currentFormat)) {
-      currentFormat = format;
       switch (format.sampleMimeType) {
         case MimeTypes.TEXT_SSA:
           // TODO Remove hack. We suppose that when extensionRendererMode is NOT EXTENSION_RENDERER_MODE_OFF,
@@ -123,20 +122,23 @@ public final class SubtitleTranscodingTrackOutput implements TrackOutput {
                   : null;
       }
     }
+
+    // Ensure currentFormat always matches what is sent to the delegate,
+    // as it's used later in setFonts().
     if (currentSubtitleParser == null) {
-      delegate.format(format);
+      currentFormat = format;
     } else {
-      delegate.format(
-          format
-              .buildUpon()
-              .setSampleMimeType(MimeTypes.APPLICATION_MEDIA3_CUES)
-              .setCodecs(format.sampleMimeType)
-              // Reset this value to the default. All non-default timestamp adjustments are done
-              // below in sampleMetadata() and there are no 'subsamples' after transcoding.
-              .setSubsampleOffsetUs(Format.OFFSET_SAMPLE_RELATIVE)
-              .setCueReplacementBehavior(subtitleParserFactory.getCueReplacementBehavior(format))
-              .build());
+      currentFormat = format
+                          .buildUpon()
+                          .setSampleMimeType(MimeTypes.APPLICATION_MEDIA3_CUES)
+                          .setCodecs(format.sampleMimeType)
+                          // Reset this value to the default. All non-default timestamp adjustments are done
+                          // below in sampleMetadata() and there are no 'subsamples' after transcoding.
+                          .setSubsampleOffsetUs(Format.OFFSET_SAMPLE_RELATIVE)
+                          .setCueReplacementBehavior(subtitleParserFactory.getCueReplacementBehavior(format))
+                          .build();
     }
+    delegate.format(currentFormat);
   }
 
   @Override
