@@ -296,13 +296,13 @@ Java_androidx_media3_decoder_ass_LibassJNI_initAssRenderer(JNIEnv *env, jobject 
   ASS_Library *library = reinterpret_cast<ASS_Library *>(ass_library_ptr);
   if (!library) {
     LOGE("ASS_Library pointer is null during renderer initialization");
-    return NULL;
+    return reinterpret_cast<jlong>(nullptr);;
   }
 
   ASS_Renderer *renderer = ass_renderer_init(library);
   if (!renderer) {
     LOGE("Failed to initialize ASS_Renderer");
-    return NULL;
+    return reinterpret_cast<jlong>(nullptr);;
   }
 
   // Basic configuration of the renderer
