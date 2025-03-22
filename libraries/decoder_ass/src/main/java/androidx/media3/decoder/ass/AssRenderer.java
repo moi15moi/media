@@ -372,23 +372,6 @@ public final class AssRenderer extends BaseRenderer implements Callback {
           // TODO: Should never happen, since onStreamChanged should have created the track previously
           Log.e(TAG, "Format changed to unknown format.");
         }
-//        List<byte[]> assHeaders = formatHolder.format.initializationData;
-//
-//        // Process headers
-//        if (assHeaders.size() >= 2) {
-//          // Log the headers for debugging
-//          for (byte[] header : assHeaders) {
-//            String headerText = new String(header, UTF_8);
-//            Log.d(TAG, "Header received: " + headerText);
-//          }
-//
-//          // Process codec private data with libass
-//          // The second element contains the actual ASS header information
-//          if (assHeaders.size() >= 2) {
-//            Log.d(TAG, "Processing codec private data");
-//            libassJNI.processCodecPrivate(currentTrackId, assHeaders.get(1));
-//          }
-//        }
         break;
       case C.RESULT_NOTHING_READ:
       default:
