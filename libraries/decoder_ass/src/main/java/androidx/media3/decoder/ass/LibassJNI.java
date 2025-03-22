@@ -1,5 +1,6 @@
 package androidx.media3.decoder.ass;
 
+import androidx.annotation.Nullable;
 import androidx.media3.common.util.Log;
 import androidx.media3.extractor.text.ssa.SsaParser;
 import java.nio.charset.StandardCharsets;
@@ -151,6 +152,24 @@ public class LibassJNI {
   }
 
   /**
+   * Renders a frame for a specific track at the given timestamp.
+   *
+   * @param trackId The ID of the track to render.
+   * @param timeMs The timestamp in milliseconds.
+   * @return A bitmap with the rendered subtitle image, or null if no image was rendered.
+   */
+  @Nullable
+  public Object renderFrame(String trackId, long timeMs) {
+    Long trackPtr = assTrackPtrs.get(trackId);
+    if (trackPtr != null && trackPtr != 0) {
+      return renderFrameNative(assRendererPtr, trackPtr, timeMs);
+    } else {
+      Log.e(TAG, "Cannot render frame: track not found: " + trackId);
+      return null;
+    }
+  }
+
+  /**
    * Loads a font from its raw byte data and adds it to the ASS_Library.
    *
    * @param fileName The name of the font file.
@@ -264,6 +283,10 @@ public class LibassJNI {
    * @param duration The duration of the event.
    */
   private native void processChunkNative(long assTrackPtr, byte[] eventData, int offset, int length, long timecode, long duration);
+
+
+  private native Object renderFrameNative(long assRendererPtr, long assTrackPtr, long timeMs);
+
 
   /**
    * Processes codec private data (subtitle headers) for the ASS_Track.

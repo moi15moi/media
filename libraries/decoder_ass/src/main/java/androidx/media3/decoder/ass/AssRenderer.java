@@ -20,6 +20,8 @@ import static androidx.media3.common.util.Assertions.checkState;
 import static java.lang.annotation.ElementType.TYPE_USE;
 import static java.nio.charset.StandardCharsets.UTF_8;
 
+import android.app.Activity;
+import android.graphics.Bitmap;
 import android.os.Handler;
 import android.os.Handler.Callback;
 import android.os.Looper;
@@ -138,7 +140,7 @@ public final class AssRenderer extends BaseRenderer implements Callback {
    * @param outputLooper The looper associated with the thread on which the output should be called.
    *     If the output makes use of standard Android UI components, then this should normally be the
    *     looper associated with the application's main thread, which can be obtained using {@link
-   *     android.app.Activity#getMainLooper()}. Null may be passed if the output should be called
+   *     Activity#getMainLooper()}. Null may be passed if the output should be called
    *     directly on the player's internal rendering thread.
    */
   public AssRenderer(TextOutput output, @Nullable Looper outputLooper) {
@@ -154,7 +156,7 @@ public final class AssRenderer extends BaseRenderer implements Callback {
    * @param outputLooper The looper associated with the thread on which the output should be called.
    *     If the output makes use of standard Android UI components, then this should normally be the
    *     looper associated with the application's main thread, which can be obtained using {@link
-   *     android.app.Activity#getMainLooper()}. Null may be passed if the output should be called
+   *     Activity#getMainLooper()}. Null may be passed if the output should be called
    *     directly on the player's internal rendering thread.
    * @param subtitleDecoderFactory A factory from which to obtain {@link SubtitleDecoder} instances.
    */
@@ -327,6 +329,24 @@ public final class AssRenderer extends BaseRenderer implements Callback {
       libassJNI.prepareProcessChunk(textData.array(), textData.position(), textData.remaining(), subtitleStartTimestamp, currentTrackId);
       Log.d(TAG, "Timestamp: " + subtitleStartTimestamp);
     }
+
+    // Render current subtitles at the current position, regardless of chunk reading
+    if (currentTrackId != null) {
+      // Render the frame with libass
+      assert libassJNI != null;
+      Object renderedFrame = libassJNI.renderFrame(
+          currentTrackId,
+          subtitleStartTimestamp);
+
+      // Convert to CueGroup and update output
+      if (renderedFrame != null) {
+        CueGroup cueGroup = bitmapToCueGroup((Bitmap) renderedFrame, positionUs);
+        updateOutput(cueGroup);
+      } else {
+        // No subtitles to show at this time
+        clearOutput();
+      }
+    }
   }
 
   @Override
@@ -494,4 +514,26 @@ public final class AssRenderer extends BaseRenderer implements Callback {
         format.selectionFlags + "_" +
         format.roleFlags;
   }
+
+  /**
+   * Converts a bitmap containing rendered subtitles into a CueGroup that can be displayed.
+   *
+   * @param bitmap The bitmap containing the rendered subtitles
+   * @param positionUs The current playback position in microseconds
+   * @return A CueGroup containing a bitmap cue
+   */
+  private CueGroup bitmapToCueGroup(Bitmap bitmap, long positionUs) {
+    // Create a bitmap cue that covers the bottom portion of the screen
+    Cue bitmapCue = new Cue.Builder()
+        .setBitmap(bitmap)
+        .setPosition(0.5f) // Center horizontally
+        .setPositionAnchor(Cue.ANCHOR_TYPE_MIDDLE) // Anchor at center
+        .setLine(0.95f, Cue.LINE_TYPE_FRACTION) // Position near bottom of screen
+        .setLineAnchor(Cue.ANCHOR_TYPE_END) // Anchor at bottom
+        .setSize(1.0f) // Full width
+        .build();
+
+    return new CueGroup(ImmutableList.of(bitmapCue), getPresentationTimeUs(positionUs));
+  }
+
 }

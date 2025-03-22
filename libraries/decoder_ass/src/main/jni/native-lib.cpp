@@ -11,6 +11,9 @@
 #define LOGD(...) __android_log_print(ANDROID_LOG_DEBUG, LOG_TAG, __VA_ARGS__)
 #define LOGE(...) __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, __VA_ARGS__)
 
+static int g_frame_width = 1280;
+static int g_frame_height = 720;
+
 // Fonction de rendu RGBA adaptée de mpv-player
 // Mélange les pixels des sous-titres (src) avec le buffer de destination (dst)
 // en prenant en compte le canal alpha et la couleur spécifique des sous-titres
@@ -370,6 +373,10 @@ Java_androidx_media3_decoder_ass_LibassJNI_setFrameSizeNative(JNIEnv *env, jobje
     return;
   }
 
+  //TODO: This is probably what causes the subtitles to appear at the wrong resolution right after loading the video
+  g_frame_height = height;
+  g_frame_width = width;
+
   LOGD("Calling ass_set_frame_size...");
   ass_set_frame_size(renderer, width, height);
   LOGD("ass_set_frame_size completed successfully");
@@ -475,4 +482,134 @@ Java_androidx_media3_decoder_ass_LibassJNI_processCodecPrivateNative(JNIEnv *env
   env->ReleaseByteArrayElements(data, data_bytes, JNI_OK);
 
   LOGD("Codec private data processed successfully");
+}
+
+
+/**
+ * Renders a frame for a specific track at the given timestamp.
+ * This implementation includes diagnostic logging to help debug rendering issues.
+ */
+extern "C"
+JNIEXPORT jobject JNICALL
+Java_androidx_media3_decoder_ass_LibassJNI_renderFrameNative(
+    JNIEnv *env,
+    jobject thiz,
+    jlong ass_renderer_ptr,
+    jlong ass_track_ptr,
+    jlong time_ms)
+{
+  ASS_Renderer *renderer = reinterpret_cast<ASS_Renderer *>(ass_renderer_ptr);
+  ASS_Track *track = reinterpret_cast<ASS_Track *>(ass_track_ptr);
+
+  if (!renderer || !track) {
+    LOGE("Invalid pointers: renderer=%p, track=%p", renderer, track);
+    return nullptr;
+  }
+
+  // Report track event count for debugging
+  LOGD("Track contains: n_events=%d, n_styles=%d, time_ms=%lld",
+       track->n_events, track->n_styles, (long long)time_ms);
+
+  // Report first few events for debugging
+  if (track->n_events > 0) {
+    for (int i = 0; i < track->n_events && i < 3; i++) {  // Show up to 3 events
+      ASS_Event *event = &track->events[i];
+      LOGD("Event[%d]: Start=%lld, Duration=%lld, Text=%s",
+           i, (long long)event->Start, (long long)event->Duration,
+           event->Text ? event->Text : "null");
+    }
+  } else {
+    LOGD("No events found in track");
+  }
+
+  // Check for changes in subtitle display
+  int detect_change = 1;
+
+  // Render frame with libass
+  ASS_Image *img = ass_render_frame(renderer, track, time_ms, &detect_change);
+
+  // If no images to render, return null
+  if (!img) {
+    LOGD("No subtitle images to render at %lld ms", (long long)time_ms);
+    return nullptr;
+  }
+
+  // Create an Android Bitmap
+  jclass bitmapClass = env->FindClass("android/graphics/Bitmap");
+  jmethodID createBitmapMethod = env->GetStaticMethodID(
+      bitmapClass,
+      "createBitmap",
+      "(IILandroid/graphics/Bitmap$Config;)Landroid/graphics/Bitmap;"
+  );
+
+  // Use ARGB_8888 configuration for transparent bitmap
+  jobject bitmap = env->CallStaticObjectMethod(
+      bitmapClass,
+      createBitmapMethod,
+      g_frame_width,  // Use stored width
+      g_frame_height, // Use stored height
+      env->GetStaticObjectField(
+          env->FindClass("android/graphics/Bitmap$Config"),
+          env->GetStaticFieldID(env->FindClass("android/graphics/Bitmap$Config"),
+                                "ARGB_8888", "Landroid/graphics/Bitmap$Config;")
+      )
+  );
+
+  // Lock pixels for direct manipulation
+  AndroidBitmapInfo bitmapInfo;
+  void *pixels = nullptr;
+  if (AndroidBitmap_getInfo(env, bitmap, &bitmapInfo) < 0 ||
+      AndroidBitmap_lockPixels(env, bitmap, &pixels) < 0) {
+    LOGE("Unable to lock bitmap pixels");
+    return nullptr;
+  }
+
+  // Clear the bitmap with transparent pixels
+  memset(pixels, 0, bitmapInfo.stride * bitmapInfo.height);
+
+  // Count images for logging
+  int imageCount = 0;
+  ASS_Image *imgPtr = img;
+  while (imgPtr) {
+    imageCount++;
+    imgPtr = imgPtr->next;
+  }
+  LOGD("Found %d subtitle image components to render", imageCount);
+
+  // Render all subtitle image components
+  int renderedCount = 0;
+  for (ASS_Image *current = img; current; current = current->next) {
+    // Skip images with zero dimensions
+    if (current->w <= 0 || current->h <= 0) {
+      continue;
+    }
+
+    // Log image details for debugging
+    LOGD("Rendering image: pos=(%d,%d) size=%dx%d color=0x%08x",
+         current->dst_x, current->dst_y, current->w, current->h, current->color);
+
+    // Calculate destination pointer in bitmap
+    uint8_t *dst = reinterpret_cast<uint8_t *>(pixels) +
+        current->dst_y * bitmapInfo.stride +  // Vertical offset
+        current->dst_x * 4;                   // Horizontal offset (4 bytes per pixel)
+
+    // Render the ASS image component onto the bitmap
+    draw_ass_rgba(
+        dst,
+        bitmapInfo.stride,
+        current->bitmap,
+        current->stride,
+        current->w,
+        current->h,
+        current->color
+    );
+
+    renderedCount++;
+  }
+
+  // Unlock the bitmap
+  AndroidBitmap_unlockPixels(env, bitmap);
+  LOGD("Successfully rendered %d subtitle components at %lld ms", renderedCount, (long long)time_ms);
+
+  return bitmap;
 }
