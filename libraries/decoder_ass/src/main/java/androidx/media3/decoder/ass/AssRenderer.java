@@ -210,8 +210,6 @@ public final class AssRenderer extends BaseRenderer implements Callback {
   protected void onStreamChanged(Format[] formats, long startPositionUs, long offsetUs,
                                  MediaSource.MediaPeriodId mediaPeriodId) {
     streamFormat = formats[0];
-    Log.d(TAG, "onStreamChanged called with format: " + streamFormat.id
-        + ", language: " + streamFormat.language);
     Metadata metadata = streamFormat.metadata;
     maybeInitLibassJNI();
 
@@ -249,7 +247,6 @@ public final class AssRenderer extends BaseRenderer implements Callback {
     assert streamFormat != null;
     List<byte[]> assHeaders = streamFormat.initializationData;
     if (assHeaders.size() >= 2) {
-      Log.d(TAG, "Processing codec private data for track: '" + currentTrackId + "'");
       libassJNI.processCodecPrivate(currentTrackId, assHeaders.get(1));
     }
 
@@ -369,7 +366,6 @@ public final class AssRenderer extends BaseRenderer implements Callback {
           currentTrackId = formatToTrackId.get(formatKey);
           Log.d(TAG, "Switched to track: '" + currentTrackId + "'");
         } else {
-          // TODO: Should never happen, since onStreamChanged should have created the track previously
           Log.e(TAG, "Format changed to unknown format.");
         }
         break;
