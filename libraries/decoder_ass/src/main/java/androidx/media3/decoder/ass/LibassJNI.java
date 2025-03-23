@@ -54,16 +54,7 @@ public class LibassJNI {
    */
   public void createTrack(String formatId) {
     if (assTrackPtrs.containsKey(formatId)) {
-      Long trackPtr = assTrackPtrs.get(formatId);
-      if (trackPtr == null || trackPtr == 0) {
-        // Invalid state, remove and recreate
-        assTrackPtrs.remove(formatId);
-        Log.w(TAG, "Invalid track pointer for format ID: '" + formatId);
-      } else {
-        // Track already exists and is valid, just return
-        Log.d(TAG, "Reusing existing track for format ID: " + formatId);
-        return;
-      }
+      return;
     }
 
     long trackPtr = createTrackNative(assLibraryPtr);
