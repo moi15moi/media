@@ -18,6 +18,7 @@ package androidx.media3.decoder.ass;
 import static androidx.media3.common.util.Assertions.checkNotNull;
 import static androidx.media3.common.util.Assertions.checkState;
 import static java.lang.annotation.ElementType.TYPE_USE;
+import static java.nio.charset.StandardCharsets.UTF_8;
 
 import android.os.Handler;
 import android.os.Handler.Callback;
@@ -127,6 +128,10 @@ public final class AssRenderer extends BaseRenderer implements Callback {
   private @Nullable String currentTrackId = null;
 
   private final Set<Long> processedFontUids;
+  private long lastTimestampUs;
+  // The amount of time to read samples ahead of the current time.
+  private static final int SAMPLE_WINDOW_DURATION_US = 100_000;
+
 
   /**
    * @param output The output.
@@ -259,6 +264,8 @@ public final class AssRenderer extends BaseRenderer implements Callback {
     inputStreamEnded = false;
     outputStreamEnded = false;
     finalStreamEndPositionUs = C.TIME_UNSET;
+    lastTimestampUs = Long.MIN_VALUE;
+
     /*if (streamFormat != null && !isCuesWithTiming(streamFormat)) {
       if (decoderReplacementState != REPLACEMENT_STATE_NONE) {
         replaceSubtitleDecoder();
@@ -298,60 +305,27 @@ public final class AssRenderer extends BaseRenderer implements Callback {
       return;
     }
 
-    @ReadDataResult
-    int readResult = readSource(formatHolder, cueDecoderInputBuffer, /* readFlags= */ 0);
-    switch (readResult) {
-      case C.RESULT_BUFFER_READ:
-        if (cueDecoderInputBuffer.isEndOfStream()) {
-          inputStreamEnded = true;
-          return;
-        }
-        cueDecoderInputBuffer.flip();
-        ByteBuffer textData = checkNotNull(cueDecoderInputBuffer.data);
-
-        // Process the subtitle chunk
-        byte[] subtitleData = new byte[textData.remaining()];
-        textData.get(subtitleData);
-
-        // TODO: 1. implement and call libassJNI.processChunk(...) here.
-        //    libassJNI.processChunk(currentTrackId, subtitleData, cueDecoderInputBuffer.timeUs / 1000, 0);
-
-
-        // TODO: 2. Implement renderFrame(...) and call it here. Should look something like this:
-        //    Object renderedFrame = libassJNI.renderFrame(currentTrackId, positionUs / 1000);
-
-
-        // TODO: 3. Convert rendered frame to CueGroup and update output
-
-
-        // TODO: Remove these comments when the code is implemented and the issue is resolved.
-        // String lineText = new String(textData.array(), textData.position(), textData.remaining(), UTF_8);
-        // Log.d(TAG, "Le texte reçu est " + lineText);
-        // Le texte qu'on reçoit n'est pas exactement celui du sous-titres.
-        // Ex:
-        // Ce qu'on reçoit:                   Dialogue: 0:00:00:00,0:00:05:00,3,0,Default,,0,0,0,,Ligne de Texte 4
-        // Ce qui est réellement dans le mkv: Dialogue: 0,0:00:15.00,0:00:20.00,Default,,0,0,0,,Ligne de Texte 4
-        // Je sais que le MatroskaExtractor modifie un peu la ligne reçu. Il y aura peut-être des modifications nécessaires.
-        // Voir quel méthode on appelera entre ces deux-ci:
-        //     - [ass_process_data](https://github.com/libass/libass/blob/1b699559025185e34d21a24cac477ca360cb917d/libass/ass.h#L699-L705)
-        //     - [ass_process_chunk](https://github.com/libass/libass/blob/1b699559025185e34d21a24cac477ca360cb917d/libass/ass.h#L716-L731)
-
-        /*CuesWithTiming cuesWithTiming =
-            cueDecoder.decode(
-                cueDecoderInputBuffer.timeUs,
-                cueData.array(),
-                cueData.arrayOffset(),
-                cueData.limit());*/
-
-        // Créer un cue à partir de ass_render_frame
-        // updateOutput(new CueGroup(cuesAtTimeUs, positionUs);
-
-        cueDecoderInputBuffer.clear();
+    while (!hasReadStreamToEnd() && lastTimestampUs < positionUs + SAMPLE_WINDOW_DURATION_US) {
+      cueDecoderInputBuffer.clear();
+      @ReadDataResult int result = readSource(formatHolder, cueDecoderInputBuffer, /* readFlags= */ 0);
+      if (result != C.RESULT_BUFFER_READ || cueDecoderInputBuffer.isEndOfStream()) {
         break;
-      case C.RESULT_FORMAT_READ:
-      case C.RESULT_NOTHING_READ:
-      default:
-        break;
+      }
+
+      lastTimestampUs = cueDecoderInputBuffer.timeUs;
+      boolean isDecodeOnly = lastTimestampUs < getLastResetPositionUs();
+      if (isDecodeOnly) {
+        continue;
+      }
+
+      cueDecoderInputBuffer.flip();
+
+      long subtitleStartTimestamp = getPresentationTimeUs(cueDecoderInputBuffer.timeUs) / 1000;
+      ByteBuffer textData = checkNotNull(cueDecoderInputBuffer.data);
+      String lineText = new String(textData.array(), textData.position(), textData.remaining(), UTF_8);
+      Log.d(TAG, "Le texte reçu est " + lineText);
+      libassJNI.prepareProcessChunk(textData.array(), textData.position(), textData.remaining(), subtitleStartTimestamp, currentTrackId);
+      Log.d(TAG, "Timestamp: " + subtitleStartTimestamp);
     }
   }
 

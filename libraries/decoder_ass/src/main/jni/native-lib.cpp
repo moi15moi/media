@@ -223,7 +223,10 @@ Java_androidx_media3_decoder_ass_LibassJNI_initAssLibrary(JNIEnv *env, jclass th
     return reinterpret_cast<jlong>(nullptr);
   }
   LOGD("ASS_Library initialized successfully");
+
+  ass_set_message_cb(library, libass_msg_callback, nullptr);
   return reinterpret_cast<jlong>(library);
+
 }
 
 // Destroy ASS_Library
@@ -281,6 +284,22 @@ Java_androidx_media3_decoder_ass_LibassJNI_addFont(
   env->ReleaseStringUTFChars(font_name, name);
   env->ReleaseByteArrayElements(font_data, data, 0);
 }
+
+extern "C"
+JNIEXPORT void JNICALL
+Java_androidx_media3_decoder_ass_LibassJNI_processChunkNative(JNIEnv *env,
+jobject thiz, jlong track, jbyteArray eventData, jint offset, jint length, jlong timecode, jlong duration) {
+  jbyte *data = env->GetByteArrayElements(eventData, nullptr);
+  if (!data) {
+    LOGE("Failed to get data");
+    return;
+  }
+
+  ass_process_chunk(reinterpret_cast<ASS_Track *>(track),
+                    reinterpret_cast<const char *>(data + offset), length, timecode, duration);
+  env->ReleaseByteArrayElements(eventData, data, 0);
+}
+
 
 /**
  * Initializes the ASS_Renderer instance.

@@ -1,6 +1,8 @@
 package androidx.media3.decoder.ass;
 
 import androidx.media3.common.util.Log;
+import androidx.media3.extractor.text.ssa.SsaParser;
+import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -74,6 +76,66 @@ public class LibassJNI {
     Long trackPtr = assTrackPtrs.remove(trackId);
     destroyTrackNative(trackPtr);
     Log.d(TAG, "Released track with ID: " + trackId);
+  }
+
+  /**
+   * Prepares and formats data to then call {@link #processChunkNative}()}.
+   *
+   * @param data The ass subtitle event.
+   * @param offset The index in {@code data} to start reading from (inclusive).
+   * @param length The number of bytes to read from {@code data}.
+   * @param timecode The timestamp in milliseconds.
+   * @param trackId The ID of the track to process subtitles from.
+   */
+  public void prepareProcessChunk(
+      byte[] data,
+      int offset,
+      int length,
+      long timecode,
+      String trackId) {
+    Long trackPtr = assTrackPtrs.get(trackId);
+    if (trackPtr == null) {
+      Log.w(TAG, "The trackID '" + trackId + "' isn't registered.");
+      return;
+    }
+
+    // Find the first and second comma positions
+    int firstComma = -1, secondComma = -1, commaCount = 0;
+    for (int i = offset; i < offset + length; i++) {
+      if (data[i] == ',') {
+        commaCount++;
+        if (commaCount == 1) {
+          firstComma = i;
+        } else {
+          secondComma = i;
+          break;
+        }
+      }
+    }
+
+    // If event formatting is wrong
+    if (secondComma == -1) {
+      String dialogueLine = new String(data, offset, length, StandardCharsets.UTF_8);
+      Log.w(TAG, "Skipping dialogue line with fewer columns than 2: " + dialogueLine);
+      return;
+    }
+
+    // Extract the timestamp
+    int timestampLength = secondComma - firstComma - 1;
+    byte[] timestampBytes = new byte[timestampLength];
+    System.arraycopy(data, firstComma + 1, timestampBytes, 0, timestampLength);
+
+    long durationMs = SsaParser.parseTimecodeUs(new String(timestampBytes)) / 1000;
+    Log.d(TAG, "durationMs: " + durationMs);
+
+    // Isolate the part after the end time.
+    // Ex:
+    //  From: "Dialogue: 0:00:00:00,0:00:05:00,1,0,Default,,0,0,0,,Line Text"
+    //  Result:                               "1,0,Default,,0,0,0,,Line Text"
+    int line_offset = secondComma + 1;
+    int line_length = offset + length - secondComma - 1;
+
+    processChunkNative(trackPtr, data, line_offset, line_length, timecode, durationMs);
   }
 
   /**
@@ -189,6 +251,19 @@ public class LibassJNI {
    * @param assTrackPtr The pointer to the native ASS_Track instance.
    */
   private native void destroyTrackNative(long assTrackPtr);
+
+
+  /**
+   * Process a chunk of subtitle stream format
+   *
+   * @param assTrackPtr The pointer to the native ASS_Track instance.
+   * @param eventData The ass subtitle event.
+   * @param offset The index in {@code eventData} to start reading from (inclusive).
+   * @param length The number of bytes to read from {@code eventData}.
+   * @param timecode The timestamp in milliseconds.
+   * @param duration The duration of the event.
+   */
+  private native void processChunkNative(long assTrackPtr, byte[] eventData, int offset, int length, long timecode, long duration);
 
   /**
    * Processes codec private data (subtitle headers) for the ASS_Track.
