@@ -220,23 +220,23 @@ public final class AssRenderer extends BaseRenderer implements Callback {
     if (!formatToTrackId.containsKey(formatKey)) {
       String trackId = libassJNI.createTrack();
       formatToTrackId.put(formatKey, trackId);
+    }
 
-      // Process font metadata
-      if (metadata != null) {
-        for (int i = 0; i < metadata.length(); i++) {
-          Metadata.Entry entry = metadata.get(i);
-          if (entry instanceof FontMetadataEntry) {
-            FontMetadataEntry fontEntry = (FontMetadataEntry) entry;
-            long uid = fontEntry.getUid();
-            if (processedFontUids.contains(uid)) {
-              continue;
-            }
-
-            String fontFileName = fontEntry.getFileName();
-            byte[] fontData = fontEntry.getFontData();
-            libassJNI.loadFont(fontFileName, fontData);
-            processedFontUids.add(uid);
+    // Process font metadata
+    if (metadata != null) {
+      for (int i = 0; i < metadata.length(); i++) {
+        Metadata.Entry entry = metadata.get(i);
+        if (entry instanceof FontMetadataEntry) {
+          FontMetadataEntry fontEntry = (FontMetadataEntry) entry;
+          long uid = fontEntry.getUid();
+          if (processedFontUids.contains(uid)) {
+            continue;
           }
+
+          String fontFileName = fontEntry.getFileName();
+          byte[] fontData = fontEntry.getFontData();
+          libassJNI.loadFont(fontFileName, fontData);
+          processedFontUids.add(uid);
         }
       }
     }
@@ -246,9 +246,11 @@ public final class AssRenderer extends BaseRenderer implements Callback {
     // Process format initialization data (ASS headers)
     assert streamFormat != null;
     List<byte[]> assHeaders = streamFormat.initializationData;
-    if (assHeaders.size() >= 2) {
-      libassJNI.processCodecPrivate(currentTrackId, assHeaders.get(1));
+    if (assHeaders.size() < 2) {
+      throw new IllegalStateException("Invalid ASS format: missing header data. Found " +
+          assHeaders.size() + " initialization data entries, expected at least 2.");
     }
+    libassJNI.processCodecPrivate(currentTrackId, assHeaders.get(1));
 
     /*
     this.cuesResolver =
