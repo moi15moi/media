@@ -213,6 +213,7 @@ public final class AssRenderer extends BaseRenderer implements Callback {
   @Override
   protected void onStreamChanged(Format[] formats, long startPositionUs, long offsetUs,
                                  MediaSource.MediaPeriodId mediaPeriodId) {
+    Log.d(TAG, "Called on streamChanged");
     streamFormat = formats[0];
     Metadata metadata = streamFormat.metadata;
     maybeInitLibassJNI();
@@ -290,6 +291,8 @@ public final class AssRenderer extends BaseRenderer implements Callback {
 
   @Override
   public void render(long positionUs, long elapsedRealtimeUs) {
+    //Log.d(TAG, "render() called at ms: " + getPresentationTimeUs(positionUs)/1000);
+    //Log.d(TAG, "curentTrackId is : "+ currentTrackId);
     if (isCurrentStreamFinal()
         && finalStreamEndPositionUs != C.TIME_UNSET
         && positionUs >= finalStreamEndPositionUs) {
@@ -298,12 +301,14 @@ public final class AssRenderer extends BaseRenderer implements Callback {
     }
 
     if (outputStreamEnded) {
+      Log.d(TAG, "I AM HERE!!!!");
       return;
     }
 
     maybeInitLibassJNI();
 
     if (currentTrackId == null) {
+      Log.d(TAG, "I AM HERE2!!!!");
       return;
     }
 
@@ -330,13 +335,13 @@ public final class AssRenderer extends BaseRenderer implements Callback {
       Log.d(TAG, "Timestamp: " + subtitleStartTimestamp);
     }
 
-    // Render current subtitles at the current position, regardless of chunk reading
+    // Render current subtitles at the current position
+    //Log.d(TAG, "curentTrackId is : "+ currentTrackId);
     if (currentTrackId != null) {
       // Render the frame with libass
-      assert libassJNI != null;
       Object renderedFrame = libassJNI.renderFrame(
           currentTrackId,
-          subtitleStartTimestamp);
+          getPresentationTimeUs(positionUs) / 1000);
 
       // Convert to CueGroup and update output
       if (renderedFrame != null) {
