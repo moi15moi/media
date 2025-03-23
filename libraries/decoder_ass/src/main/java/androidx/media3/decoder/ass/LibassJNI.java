@@ -72,12 +72,8 @@ public class LibassJNI {
    */
   public void releaseTrack(String trackId) {
     Long trackPtr = assTrackPtrs.remove(trackId);
-    if (trackPtr != null && trackPtr != 0) {
-      destroyTrackNative(trackPtr);
-      Log.d(TAG, "Released track with ID: " + trackId);
-      return;
-    }
-    Log.w(TAG, "Attempted to release non-existent track ID: " + trackId);
+    destroyTrackNative(trackPtr);
+    Log.d(TAG, "Released track with ID: " + trackId);
   }
 
   /**
@@ -88,12 +84,8 @@ public class LibassJNI {
    */
   public void processCodecPrivate(String trackId, byte[] data) {
     Long trackPtr = assTrackPtrs.get(trackId);
-    if (trackPtr != null && trackPtr != 0) {
-      processCodecPrivateNative(trackPtr, data);
-      Log.d(TAG, "Processed codec private data for track ID: " + trackId);
-    } else {
-      Log.e(TAG, "Cannot process codec private data: track not found: " + trackId);
-    }
+    processCodecPrivateNative(trackPtr, data);
+    Log.d(TAG, "Processed codec private data for track ID: " + trackId);
   }
 
   /**
@@ -115,7 +107,6 @@ public class LibassJNI {
           Log.d(TAG, "Finalized track: " + entry.getKey());
         }
       }
-      assTrackPtrs.clear();
 
       if (assRendererPtr != 0) {
         destroyAssRenderer(assRendererPtr);
