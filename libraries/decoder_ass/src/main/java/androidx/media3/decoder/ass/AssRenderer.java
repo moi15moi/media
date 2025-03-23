@@ -58,10 +58,8 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 import java.nio.ByteBuffer;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import org.checkerframework.dataflow.qual.SideEffectFree;
@@ -126,7 +124,6 @@ public final class AssRenderer extends BaseRenderer implements Callback {
   @Nullable private LibassJNI libassJNI;
 
   // Track management
-  private final Map<String, String> formatToTrackId = new HashMap<>();
   private @Nullable String currentTrackId = null;
 
   private final Set<Long> processedFontUids;
@@ -214,13 +211,9 @@ public final class AssRenderer extends BaseRenderer implements Callback {
     maybeInitLibassJNI();
 
     // Get a unique key for the subtitle format
-    String formatKey = getTrackId(streamFormat);
-
-    // Check if we have a track for this format
-    if (!formatToTrackId.containsKey(formatKey)) {
-      String trackId = libassJNI.createTrack();
-      formatToTrackId.put(formatKey, trackId);
-    }
+    String formatId = getTrackId(streamFormat);
+    currentTrackId = formatId;
+    libassJNI.createTrack(formatId);
 
     // Process font metadata
     if (metadata != null) {
@@ -240,8 +233,6 @@ public final class AssRenderer extends BaseRenderer implements Callback {
         }
       }
     }
-
-    currentTrackId = Objects.requireNonNull(formatToTrackId.get(formatKey));
 
     // Process format initialization data (ASS headers)
     assert streamFormat != null;
@@ -358,19 +349,6 @@ public final class AssRenderer extends BaseRenderer implements Callback {
         cueDecoderInputBuffer.clear();
         break;
       case C.RESULT_FORMAT_READ:
-        // As the format has changed and because we've already processed the headers in
-        // onStreamChanged, we just update the track reference.
-        streamFormat = formatHolder.format;
-        assert streamFormat != null;
-        String formatKey = getTrackId(streamFormat);
-
-        if (formatToTrackId.containsKey(formatKey)) {
-          currentTrackId = formatToTrackId.get(formatKey);
-          Log.d(TAG, "Switched to track: '" + currentTrackId + "'");
-        } else {
-          Log.e(TAG, "Format changed to unknown format.");
-        }
-        break;
       case C.RESULT_NOTHING_READ:
       default:
         break;
@@ -385,11 +363,9 @@ public final class AssRenderer extends BaseRenderer implements Callback {
     lastRendererPositionUs = C.TIME_UNSET;
 
     // Release all tracks
-    if (libassJNI != null) {
-      for (String trackId : formatToTrackId.values()) {
-        libassJNI.releaseTrack(trackId);
-      }
-      formatToTrackId.clear();
+    // TODO: Double-check at the end of the development if this is the optimal solution.
+    if (libassJNI != null && currentTrackId != null) {
+      libassJNI.releaseTrack(currentTrackId);
       currentTrackId = null;
     }
 

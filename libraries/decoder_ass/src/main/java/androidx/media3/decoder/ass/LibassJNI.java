@@ -3,8 +3,6 @@ package androidx.media3.decoder.ass;
 import androidx.media3.common.util.Log;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.UUID;
-import org.checkerframework.checker.nullness.qual.NonNull;
 
 public class LibassJNI {
   private final String TAG = "LibassJNI";
@@ -49,54 +47,61 @@ public class LibassJNI {
   }
 
   /**
-   * Creates a new ASS track and returns its ID.
+   * Creates a new ASS_Track instance if it does not already exist for the given format ID.
    *
-   * @return A unique identifier for the created track.
+   * @param formatId The unique identifier for the format.
+   * @throws RuntimeException if the ASS_Track creation fails.
    */
-  public String createTrack() {
-    String trackId = UUID.randomUUID().toString();
+  public void createTrack(String formatId) {
+    if (assTrackPtrs.containsKey(formatId)) {
+      Long trackPtr = assTrackPtrs.get(formatId);
+      if (trackPtr == null || trackPtr == 0) {
+        // Invalid state, remove and recreate
+        assTrackPtrs.remove(formatId);
+        Log.w(TAG, "Invalid track pointer for format ID: '" + formatId);
+      } else {
+        // Track already exists and is valid, just return
+        Log.d(TAG, "Reusing existing track for format ID: " + formatId);
+        return;
+      }
+    }
+
     long trackPtr = createTrackNative(assLibraryPtr);
     if (trackPtr == 0) {
       throw new RuntimeException("Failed to create ASS_Track");
     }
-    assTrackPtrs.put(trackId, trackPtr);
-    Log.d(TAG, "Created new track with ID: " + trackId);
-    return trackId;
+    assTrackPtrs.put(formatId, trackPtr);
+    Log.d(TAG, "Created new track with ID: " + formatId);
   }
 
   /**
    * Releases a track when it's no longer needed.
    *
    * @param trackId The ID of the track to release.
-   * @return true if the track was found and released, false otherwise.
    */
-  public boolean releaseTrack(String trackId) {
+  public void releaseTrack(String trackId) {
     Long trackPtr = assTrackPtrs.remove(trackId);
     if (trackPtr != null && trackPtr != 0) {
       destroyTrackNative(trackPtr);
       Log.d(TAG, "Released track with ID: " + trackId);
-      return true;
+      return;
     }
     Log.w(TAG, "Attempted to release non-existent track ID: " + trackId);
-    return false;
   }
 
   /**
    * Processes codec private data (subtitle headers) for a specific track.
    *
    * @param trackId The ID of the track to process the data for.
-   * @param data The codec private data bytes.
-   * @return true if processing was successful, false otherwise.
+   * @param data    The codec private data bytes.
    */
-  public boolean processCodecPrivate(String trackId, byte[] data) {
+  public void processCodecPrivate(String trackId, byte[] data) {
     Long trackPtr = assTrackPtrs.get(trackId);
     if (trackPtr != null && trackPtr != 0) {
       processCodecPrivateNative(trackPtr, data);
       Log.d(TAG, "Processed codec private data for track ID: " + trackId);
-      return true;
     } else {
       Log.e(TAG, "Cannot process codec private data: track not found: " + trackId);
-      return false;
     }
   }
 
