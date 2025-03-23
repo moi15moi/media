@@ -18,6 +18,7 @@ package androidx.media3.decoder.ass;
 import static androidx.media3.common.util.Assertions.checkNotNull;
 import static androidx.media3.common.util.Assertions.checkState;
 import static java.lang.annotation.ElementType.TYPE_USE;
+import static java.nio.charset.StandardCharsets.UTF_8;
 
 import android.os.Handler;
 import android.os.Handler.Callback;
@@ -300,6 +301,7 @@ public final class AssRenderer extends BaseRenderer implements Callback {
 
     @ReadDataResult
     int readResult = readSource(formatHolder, cueDecoderInputBuffer, /* readFlags= */ 0);
+    long subtitleStartTimestamp;
     switch (readResult) {
       case C.RESULT_BUFFER_READ:
         if (cueDecoderInputBuffer.isEndOfStream()) {
@@ -307,11 +309,17 @@ public final class AssRenderer extends BaseRenderer implements Callback {
           return;
         }
         cueDecoderInputBuffer.flip();
+        subtitleStartTimestamp = getPresentationTimeUs(cueDecoderInputBuffer.timeUs) / 1000;
         ByteBuffer textData = checkNotNull(cueDecoderInputBuffer.data);
+        String lineText = new String(textData.array(), textData.position(), textData.remaining(), UTF_8);
+        Log.d(TAG, "Le texte reçu est " + lineText);
 
-        // Process the subtitle chunk
-        byte[] subtitleData = new byte[textData.remaining()];
-        textData.get(subtitleData);
+        //TODO: On a peut-être pas besoin de ça
+        assert libassJNI != null;
+        libassJNI.prepareProcessChunk(textData, subtitleStartTimestamp, currentTrackId);
+        Log.d(TAG, "Timestamp: " + subtitleStartTimestamp);
+
+
 
         // TODO: 1. implement and call libassJNI.processChunk(...) here.
         //    libassJNI.processChunk(currentTrackId, subtitleData, cueDecoderInputBuffer.timeUs / 1000, 0);

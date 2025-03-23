@@ -1,6 +1,8 @@
 package androidx.media3.decoder.ass;
 
 import androidx.media3.common.util.Log;
+import androidx.media3.extractor.text.ssa.SsaParser;
+import java.nio.ByteBuffer;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -74,6 +76,62 @@ public class LibassJNI {
     Long trackPtr = assTrackPtrs.remove(trackId);
     destroyTrackNative(trackPtr);
     Log.d(TAG, "Released track with ID: " + trackId);
+  }
+
+  /**
+   * Loads a font from its raw byte data and adds it to the ASS_Library.
+   *
+   * @param data The ass subtitle event.
+   * @param timecode The timestamp in milliseconds.
+   */
+  public void prepareProcessChunk(ByteBuffer data, long timecode, String trackId) {
+
+    byte[] bytes = data.array();
+    int len = bytes.length;
+
+    // Find the first and third comma positions
+    int firstComma = -1, secondComma = -1, thirdComma = -1, commaCount = 0;
+    for (int i = 0; i < len; i++) {
+      if (bytes[i] == ',') {
+        commaCount++;
+        if (commaCount == 1) {
+          firstComma = i;
+        }
+        else if (commaCount == 2) {
+          secondComma = i;
+        }
+        else if (commaCount == 3) {
+          thirdComma = i;
+          break;
+        }
+      }
+    }
+
+    // If event formatting is wrong
+    if (thirdComma == -1) {
+      // TODO: Handle this case, maybe skip the subtitle altogether?
+    }
+
+    // Create a new byte array excluding the timestamp portion
+    int newLength = len - secondComma - 1;
+    byte[] newBytes = new byte[newLength];
+    System.arraycopy(bytes, secondComma + 1, newBytes, 0, newLength);
+
+    // Extract the timestamp
+    int timestampLength = secondComma - firstComma - 1;
+    byte[] timestampBytes = new byte[timestampLength];
+    System.arraycopy(bytes, firstComma + 1, timestampBytes, 0, timestampLength);
+    Log.d(TAG, "Extracted Bytes: " + new String(timestampBytes));
+
+    long durationMs = SsaParser.parseTimecodeUs(new String(timestampBytes)) / 1000;
+    Log.d(TAG, "durationMs: " + durationMs);
+
+    Long trackPtr = assTrackPtrs.get(trackId);
+    if (trackPtr != null && trackPtr != 0) {
+      assProcessChunk(trackPtr, newBytes, newBytes.length, timecode, durationMs);
+    } else {
+      Log.e(TAG, "Cannot process chunk: track not found: " + trackId);
+    }
   }
 
   /**
@@ -189,6 +247,15 @@ public class LibassJNI {
    * @param assTrackPtr The pointer to the native ASS_Track instance.
    */
   private native void destroyTrackNative(long assTrackPtr);
+
+
+  /**
+   * Process a chunk of subtitle stream format
+   *
+   * @param
+   */
+
+  private native void assProcessChunk(long assTrackPtr, byte[] data, int size, long timecode, long duration);
 
   /**
    * Processes codec private data (subtitle headers) for the ASS_Track.
