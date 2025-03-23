@@ -1,8 +1,14 @@
 package androidx.media3.decoder.ass;
 
+import androidx.media3.common.util.Log;
+import java.util.HashMap;
+import java.util.Map;
+
 public class LibassJNI {
+  private final String TAG = "LibassJNI";
   private final long assLibraryPtr;
   private final long assRendererPtr;
+  private final Map<String, Long> assTrackPtrs = new HashMap<>();
 
   public LibassJNI() {
     if (!AssLibrary.isAvailable()) {
@@ -41,6 +47,48 @@ public class LibassJNI {
   }
 
   /**
+   * Creates a new ASS_Track instance if it does not already exist for the given format ID.
+   *
+   * @param formatId The unique identifier for the format.
+   * @throws RuntimeException if the ASS_Track creation fails.
+   */
+  public void createTrack(String formatId) {
+    if (assTrackPtrs.containsKey(formatId)) {
+      return;
+    }
+
+    long trackPtr = createTrackNative(assLibraryPtr);
+    if (trackPtr == 0) {
+      throw new RuntimeException("Failed to create ASS_Track");
+    }
+    assTrackPtrs.put(formatId, trackPtr);
+    Log.d(TAG, "Created new track with ID: " + formatId);
+  }
+
+  /**
+   * Releases a track when it's no longer needed.
+   *
+   * @param trackId The ID of the track to release.
+   */
+  public void releaseTrack(String trackId) {
+    Long trackPtr = assTrackPtrs.remove(trackId);
+    destroyTrackNative(trackPtr);
+    Log.d(TAG, "Released track with ID: " + trackId);
+  }
+
+  /**
+   * Processes codec private data (subtitle headers) for a specific track.
+   *
+   * @param trackId The ID of the track to process the data for.
+   * @param data    The codec private data bytes.
+   */
+  public void processCodecPrivate(String trackId, byte[] data) {
+    Long trackPtr = assTrackPtrs.get(trackId);
+    processCodecPrivateNative(trackPtr, data);
+    Log.d(TAG, "Processed codec private data for track ID: " + trackId);
+  }
+
+  /**
    * Loads a font from its raw byte data and adds it to the ASS_Library.
    *
    * @param fileName The name of the font file.
@@ -53,6 +101,13 @@ public class LibassJNI {
   @Override
   protected void finalize() throws Throwable {
     try {
+      for (Map.Entry<String, Long> entry : assTrackPtrs.entrySet()) {
+        if (entry.getValue() != 0) {
+          destroyTrackNative(entry.getValue());
+          Log.d(TAG, "Finalized track: " + entry.getKey());
+        }
+      }
+
       if (assRendererPtr != 0) {
         destroyAssRenderer(assRendererPtr);
       }
@@ -119,4 +174,27 @@ public class LibassJNI {
    * @param height The height of the storage in pixels.
    */
   private native void setStorageSizeNative(long assRendererPtr, int width, int height);
+
+  /**
+   * Creates a new ASS_Track instance.
+   *
+   * @param assLibraryPtr The pointer to the native ASS_Library instance.
+   * @return The pointer to the created ASS_Track instance.
+   */
+  private native long createTrackNative(long assLibraryPtr);
+
+  /**
+   * Destroys the ASS_Track instance.
+   *
+   * @param assTrackPtr The pointer to the native ASS_Track instance.
+   */
+  private native void destroyTrackNative(long assTrackPtr);
+
+  /**
+   * Processes codec private data (subtitle headers) for the ASS_Track.
+   *
+   * @param assTrackPtr The pointer to the native ASS_Track instance.
+   * @param data The codec private data bytes.
+   */
+  private native void processCodecPrivateNative(long assTrackPtr, byte[] data);
 }

@@ -18,7 +18,6 @@ package androidx.media3.decoder.ass;
 import static androidx.media3.common.util.Assertions.checkNotNull;
 import static androidx.media3.common.util.Assertions.checkState;
 import static java.lang.annotation.ElementType.TYPE_USE;
-import static java.nio.charset.StandardCharsets.UTF_8;
 
 import android.os.Handler;
 import android.os.Handler.Callback;
@@ -123,6 +122,10 @@ public final class AssRenderer extends BaseRenderer implements Callback {
   private long finalStreamEndPositionUs;
   @Nullable private IOException streamError;
   @Nullable private LibassJNI libassJNI;
+
+  // Track management
+  private @Nullable String currentTrackId = null;
+
   private final Set<Long> processedFontUids;
 
   /**
@@ -201,18 +204,19 @@ public final class AssRenderer extends BaseRenderer implements Callback {
   }
 
   @Override
-  protected void onStreamChanged(
-      Format[] formats,
-      long startPositionUs,
-      long offsetUs,
-      MediaSource.MediaPeriodId mediaPeriodId) {
-      // TODO
+  protected void onStreamChanged(Format[] formats, long startPositionUs, long offsetUs,
+                                 MediaSource.MediaPeriodId mediaPeriodId) {
     streamFormat = formats[0];
-    Metadata metadata = streamFormat.metadata; // Access the metadata
+    Metadata metadata = streamFormat.metadata;
+    maybeInitLibassJNI();
+
+    // Get a unique key for the subtitle format
+    String formatId = getTrackId(streamFormat);
+    currentTrackId = formatId;
+    libassJNI.createTrack(formatId);
 
     // Process font metadata
     if (metadata != null) {
-      maybeInitLibassJNI();
       for (int i = 0; i < metadata.length(); i++) {
         Metadata.Entry entry = metadata.get(i);
         if (entry instanceof FontMetadataEntry) {
@@ -229,6 +233,16 @@ public final class AssRenderer extends BaseRenderer implements Callback {
         }
       }
     }
+
+    // Process format initialization data (ASS headers)
+    assert streamFormat != null;
+    List<byte[]> assHeaders = streamFormat.initializationData;
+    if (assHeaders.size() < 2) {
+      throw new IllegalStateException("Invalid ASS format: missing header data. Found " +
+          assHeaders.size() + " initialization data entries, expected at least 2.");
+    }
+    libassJNI.processCodecPrivate(currentTrackId, assHeaders.get(1));
+
     /*
     this.cuesResolver =
         streamFormat.cueReplacementBehavior == Format.CUE_REPLACEMENT_BEHAVIOR_MERGE
@@ -280,7 +294,10 @@ public final class AssRenderer extends BaseRenderer implements Callback {
 
     maybeInitLibassJNI();
 
-    // TODO
+    if (currentTrackId == null) {
+      return;
+    }
+
     @ReadDataResult
     int readResult = readSource(formatHolder, cueDecoderInputBuffer, /* readFlags= */ 0);
     switch (readResult) {
@@ -290,11 +307,26 @@ public final class AssRenderer extends BaseRenderer implements Callback {
           return;
         }
         cueDecoderInputBuffer.flip();
-        long subtitleStartTimestamp = getPresentationTimeUs(cueDecoderInputBuffer.timeUs);
         ByteBuffer textData = checkNotNull(cueDecoderInputBuffer.data);
-        String lineText = new String(textData.array(), textData.position(), textData.remaining(), UTF_8);
-        Log.d(TAG, "Le texte reçu est " + lineText);
-        // TODO
+
+        // Process the subtitle chunk
+        byte[] subtitleData = new byte[textData.remaining()];
+        textData.get(subtitleData);
+
+        // TODO: 1. implement and call libassJNI.processChunk(...) here.
+        //    libassJNI.processChunk(currentTrackId, subtitleData, cueDecoderInputBuffer.timeUs / 1000, 0);
+
+
+        // TODO: 2. Implement renderFrame(...) and call it here. Should look something like this:
+        //    Object renderedFrame = libassJNI.renderFrame(currentTrackId, positionUs / 1000);
+
+
+        // TODO: 3. Convert rendered frame to CueGroup and update output
+
+
+        // TODO: Remove these comments when the code is implemented and the issue is resolved.
+        // String lineText = new String(textData.array(), textData.position(), textData.remaining(), UTF_8);
+        // Log.d(TAG, "Le texte reçu est " + lineText);
         // Le texte qu'on reçoit n'est pas exactement celui du sous-titres.
         // Ex:
         // Ce qu'on reçoit:                   Dialogue: 0:00:00:00,0:00:05:00,3,0,Default,,0,0,0,,Ligne de Texte 4
@@ -317,16 +349,9 @@ public final class AssRenderer extends BaseRenderer implements Callback {
         cueDecoderInputBuffer.clear();
         break;
       case C.RESULT_FORMAT_READ:
-        List<byte[]> assHeaders = formatHolder.format.initializationData;
-        // TODO
-        // Le premier élément est le SSA_DIALOGUE_FORMAT, donc sera toujours là. On peut juste prendre le deuxième sans problèmes.
-        // De plus, appeler [ass_process_codec_private](https://github.com/libass/libass/blob/1b699559025185e34d21a24cac477ca360cb917d/libass/ass.h#L707-L714)
-        for (byte[] header: assHeaders) {
-          String headerText = new String(header, UTF_8);
-          Log.d(TAG, "Le header reçu est " + headerText);
-        }
-        break;
       case C.RESULT_NOTHING_READ:
+      default:
+        break;
     }
   }
 
@@ -336,6 +361,14 @@ public final class AssRenderer extends BaseRenderer implements Callback {
     finalStreamEndPositionUs = C.TIME_UNSET;
     clearOutput();
     lastRendererPositionUs = C.TIME_UNSET;
+
+    // Release all tracks
+    // TODO: Double-check at the end of the development if this is the optimal solution.
+    if (libassJNI != null && currentTrackId != null) {
+      libassJNI.releaseTrack(currentTrackId);
+      currentTrackId = null;
+    }
+
     if (subtitleDecoder != null) {
       releaseSubtitleDecoder();
     }
@@ -472,5 +505,19 @@ public final class AssRenderer extends BaseRenderer implements Callback {
   private long getPresentationTimeUs(long positionUs) {
     checkState(positionUs != C.TIME_UNSET);
     return positionUs - getStreamOffsetUs();
+  }
+
+  /**
+   * Generate and returns a unique key for a subtitle format to identify tracks, based on format
+   * attributes that would define a unique subtitle track.
+   *
+   * @param format The format to generate a key for.
+   * @return A unique key for the format.
+   */
+  private String getTrackId(Format format) {
+    return format.id + "_" +
+        format.language + "_" +
+        format.selectionFlags + "_" +
+        format.roleFlags;
   }
 }

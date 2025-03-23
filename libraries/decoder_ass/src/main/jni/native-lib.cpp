@@ -296,13 +296,13 @@ Java_androidx_media3_decoder_ass_LibassJNI_initAssRenderer(JNIEnv *env, jobject 
   ASS_Library *library = reinterpret_cast<ASS_Library *>(ass_library_ptr);
   if (!library) {
     LOGE("ASS_Library pointer is null during renderer initialization");
-    return reinterpret_cast<jlong>(nullptr);;
+    return NULL;
   }
 
   ASS_Renderer *renderer = ass_renderer_init(library);
   if (!renderer) {
     LOGE("Failed to initialize ASS_Renderer");
-    return reinterpret_cast<jlong>(nullptr);;
+    return NULL;
   }
 
   // Basic configuration of the renderer
@@ -376,4 +376,84 @@ Java_androidx_media3_decoder_ass_LibassJNI_setStorageSizeNative(JNIEnv *env, job
 
   ass_set_storage_size(renderer, width, height);
   LOGD("Storage size set to %d x %d", width, height);
+}
+
+/**
+ * Creates a new ASS_Track.
+ *
+ * @param env The JNI environment pointer.
+ * @param thiz The Java object calling this function.
+ * @param ass_library_ptr The pointer to the ASS_Library instance.
+ * @return The pointer to the created ASS_Track instance, or 0 if creation fails.
+ */
+extern "C"
+JNIEXPORT jlong JNICALL
+Java_androidx_media3_decoder_ass_LibassJNI_createTrackNative(JNIEnv *env, jobject thiz, jlong ass_library_ptr) {
+  auto *library = reinterpret_cast<ASS_Library *>(ass_library_ptr);
+  if (!library) {
+    LOGE("ASS_Library pointer is null when creating track");
+    return NULL;
+  }
+
+  ASS_Track *track = ass_new_track(library);
+  if (!track) {
+    LOGE("Failed to create ASS_Track");
+    return NULL;
+  }
+
+  LOGD("ASS_Track created successfully");
+  return reinterpret_cast<jlong>(track);
+}
+
+/**
+ * Destroys the ASS_Track instance.
+ *
+ * @param env The JNI environment pointer.
+ * @param thiz The Java object calling this function.
+ * @param ass_track_ptr The pointer to the ASS_Track instance.
+ */
+extern "C"
+JNIEXPORT void JNICALL
+Java_androidx_media3_decoder_ass_LibassJNI_destroyTrackNative(JNIEnv *env, jobject thiz, jlong ass_track_ptr) {
+  ASS_Track *track = reinterpret_cast<ASS_Track *>(ass_track_ptr);
+  if (track) {
+    ass_free_track(track);
+    LOGD("ASS_Track destroyed successfully");
+  } else {
+    LOGE("ASS_Track pointer is null during destruction");
+  }
+}
+
+/**
+ * Processes codec private data from a subtitle stream.
+ *
+ * @param env The JNI environment pointer.
+ * @param thiz The Java object calling this function.
+ * @param ass_track_ptr The pointer to the ASS_Track instance.
+ * @param data The codec private data.
+ */
+extern "C"
+JNIEXPORT void JNICALL
+Java_androidx_media3_decoder_ass_LibassJNI_processCodecPrivateNative(JNIEnv *env, jobject thiz, jlong ass_track_ptr, jbyteArray data) {
+  ASS_Track *track = reinterpret_cast<ASS_Track *>(ass_track_ptr);
+  if (!track) {
+    LOGE("ASS_Track pointer is null when processing codec private data");
+    return;
+  }
+
+  // Convert jbyteArray to const char *
+  jbyte *data_bytes = env->GetByteArrayElements(data, nullptr);
+  if (!data_bytes) {
+    LOGE("Failed to get codec private data from byte array");
+    return;
+  }
+  jsize data_size = env->GetArrayLength(data);
+
+  // Call the libass function
+  ass_process_codec_private(track, reinterpret_cast<const char *>(data_bytes), data_size);
+
+  // Release the JNI resources
+  env->ReleaseByteArrayElements(data, data_bytes, JNI_OK);
+
+  LOGD("Codec private data processed successfully");
 }
