@@ -2,7 +2,6 @@ package androidx.media3.decoder.ass;
 
 import androidx.media3.common.util.Log;
 import androidx.media3.extractor.text.ssa.SsaParser;
-import java.nio.ByteBuffer;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -82,23 +81,26 @@ public class LibassJNI {
    * Prepares and formats data to then call {@link #assProcessChunk}()}.
    *
    * @param data The ass subtitle event.
+   * @param offset The index in {@code data} to start reading from (inclusive).
+   * @param length The number of bytes to read from {@code data}.
    * @param timecode The timestamp in milliseconds.
    * @param trackId The ID of the track to process subtitles from.
    */
-  public void prepareProcessChunk(ByteBuffer data, long timecode, String trackId) {
-
-    byte[] bytes = data.array();
-    int len = bytes.length;
+  public void prepareProcessChunk(
+      byte[] data,
+      int offset,
+      int length,
+      long timecode,
+      String trackId) {
 
     // Find the first and second comma positions
     int firstComma = -1, secondComma = -1, commaCount = 0;
-    for (int i = 0; i < len; i++) {
-      if (bytes[i] == ',') {
+    for (int i = offset; i < offset + length; i++) {
+      if (data[i] == ',') {
         commaCount++;
         if (commaCount == 1) {
           firstComma = i;
-        }
-        else {
+        } else {
           secondComma = i;
           break;
         }
@@ -111,15 +113,14 @@ public class LibassJNI {
     }
 
     // Create a new byte array excluding the timestamp portion
-    int newLength = len - secondComma - 1;
+    int newLength = offset + length - secondComma - 1;
     byte[] newBytes = new byte[newLength];
-    System.arraycopy(bytes, secondComma + 1, newBytes, 0, newLength);
+    System.arraycopy(data, secondComma + 1, newBytes, 0, newLength);
 
     // Extract the timestamp
     int timestampLength = secondComma - firstComma - 1;
     byte[] timestampBytes = new byte[timestampLength];
-    System.arraycopy(bytes, firstComma + 1, timestampBytes, 0, timestampLength);
-    Log.d(TAG, "Extracted Bytes: " + new String(timestampBytes));
+    System.arraycopy(data, firstComma + 1, timestampBytes, 0, timestampLength);
 
     long durationMs = SsaParser.parseTimecodeUs(new String(timestampBytes)) / 1000;
     Log.d(TAG, "durationMs: " + durationMs);

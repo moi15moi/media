@@ -313,7 +313,7 @@ public final class AssRenderer extends BaseRenderer implements Callback {
         String lineText = new String(textData.array(), textData.position(), textData.remaining(), UTF_8);
         Log.d(TAG, "Le texte reçu est " + lineText);
 
-        libassJNI.prepareProcessChunk(textData, subtitleStartTimestamp, currentTrackId);
+        libassJNI.prepareProcessChunk(textData.array(), textData.position(), textData.remaining(), subtitleStartTimestamp, currentTrackId);
         Log.d(TAG, "Timestamp: " + subtitleStartTimestamp);
 
 
