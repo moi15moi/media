@@ -650,6 +650,10 @@
         "uri": "asset:///test_video_flac_with_ass_with_two_tracks.mkv"
       },
       {
+        "name": "mkv big ass",
+        "uri": "asset:///test_video_flac_with_big_ass.mkv"
+      },
+      {
         "name": "TTML positioning",
         "uri": "https://html5demos.com/assets/dizzy.mp4",
         "subtitle_uri": "https://storage.googleapis.com/exoplayer-test-media-1/ttml/netflix_ttml_sample.xml",
