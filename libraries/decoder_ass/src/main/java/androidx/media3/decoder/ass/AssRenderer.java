@@ -301,7 +301,6 @@ public final class AssRenderer extends BaseRenderer implements Callback {
 
     @ReadDataResult
     int readResult = readSource(formatHolder, cueDecoderInputBuffer, /* readFlags= */ 0);
-    long subtitleStartTimestamp;
     switch (readResult) {
       case C.RESULT_BUFFER_READ:
         if (cueDecoderInputBuffer.isEndOfStream()) {
@@ -309,13 +308,11 @@ public final class AssRenderer extends BaseRenderer implements Callback {
           return;
         }
         cueDecoderInputBuffer.flip();
-        subtitleStartTimestamp = getPresentationTimeUs(cueDecoderInputBuffer.timeUs) / 1000;
+        long subtitleStartTimestamp = getPresentationTimeUs(cueDecoderInputBuffer.timeUs) / 1000;
         ByteBuffer textData = checkNotNull(cueDecoderInputBuffer.data);
         String lineText = new String(textData.array(), textData.position(), textData.remaining(), UTF_8);
         Log.d(TAG, "Le texte reçu est " + lineText);
 
-        //TODO: On a peut-être pas besoin de ça
-        assert libassJNI != null;
         libassJNI.prepareProcessChunk(textData, subtitleStartTimestamp, currentTrackId);
         Log.d(TAG, "Timestamp: " + subtitleStartTimestamp);
 

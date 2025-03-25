@@ -79,36 +79,34 @@ public class LibassJNI {
   }
 
   /**
-   * Loads a font from its raw byte data and adds it to the ASS_Library.
+   * Prepares and formats data to then call {@link #assProcessChunk}()}.
    *
    * @param data The ass subtitle event.
    * @param timecode The timestamp in milliseconds.
+   * @param trackId The ID of the track to process subtitles from.
    */
   public void prepareProcessChunk(ByteBuffer data, long timecode, String trackId) {
 
     byte[] bytes = data.array();
     int len = bytes.length;
 
-    // Find the first and third comma positions
-    int firstComma = -1, secondComma = -1, thirdComma = -1, commaCount = 0;
+    // Find the first and second comma positions
+    int firstComma = -1, secondComma = -1, commaCount = 0;
     for (int i = 0; i < len; i++) {
       if (bytes[i] == ',') {
         commaCount++;
         if (commaCount == 1) {
           firstComma = i;
         }
-        else if (commaCount == 2) {
+        else {
           secondComma = i;
-        }
-        else if (commaCount == 3) {
-          thirdComma = i;
           break;
         }
       }
     }
 
     // If event formatting is wrong
-    if (thirdComma == -1) {
+    if (secondComma == -1) {
       // TODO: Handle this case, maybe skip the subtitle altogether?
     }
 

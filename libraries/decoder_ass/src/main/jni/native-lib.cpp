@@ -295,8 +295,6 @@ jobject thiz, jlong track, jbyteArray eventData, jint size, jlong timecode, jlon
     LOGE("Failed to get data");
     return;
   }
-  jsize data_size = env->GetArrayLength(eventData);
-  LOGD("Font data size: %d bytes", data_size);
 
   ass_process_chunk(reinterpret_cast<ASS_Track *>(track),
                     reinterpret_cast<const char *>(data), size, timecode, duration);
