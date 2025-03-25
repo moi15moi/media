@@ -552,7 +552,6 @@ Java_androidx_media3_decoder_ass_LibassJNI_renderFrameNative(
 
 
   // Render all subtitle image components
-  int renderedCount = 0;
   for (ASS_Image *current = img; current; current = current->next) {
     // Skip images with zero dimensions
     if (current->w <= 0 || current->h <= 0) {
@@ -575,8 +574,6 @@ Java_androidx_media3_decoder_ass_LibassJNI_renderFrameNative(
         current->h,
         current->color
     );
-
-    renderedCount++;
   }
 
   // Unlock the bitmap
