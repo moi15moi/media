@@ -287,9 +287,8 @@ Java_androidx_media3_decoder_ass_LibassJNI_addFont(
 
 extern "C"
 JNIEXPORT void JNICALL
-Java_androidx_media3_decoder_ass_LibassJNI_assProcessChunk(JNIEnv *env,
-jobject thiz, jlong track, jbyteArray eventData, jint size, jlong timecode, jlong duration) {
-
+Java_androidx_media3_decoder_ass_LibassJNI_processChunkNative(JNIEnv *env,
+jobject thiz, jlong track, jbyteArray eventData, jint offset, jint length, jlong timecode, jlong duration) {
   jbyte *data = env->GetByteArrayElements(eventData, nullptr);
   if (!data) {
     LOGE("Failed to get data");
@@ -297,7 +296,7 @@ jobject thiz, jlong track, jbyteArray eventData, jint size, jlong timecode, jlon
   }
 
   ass_process_chunk(reinterpret_cast<ASS_Track *>(track),
-                    reinterpret_cast<const char *>(data), size, timecode, duration);
+                    reinterpret_cast<const char *>(data + offset), length, timecode, duration);
   env->ReleaseByteArrayElements(eventData, data, 0);
 }
 

@@ -112,11 +112,6 @@ public class LibassJNI {
       // TODO: Handle this case, maybe skip the subtitle altogether?
     }
 
-    // Create a new byte array excluding the timestamp portion
-    int newLength = offset + length - secondComma - 1;
-    byte[] newBytes = new byte[newLength];
-    System.arraycopy(data, secondComma + 1, newBytes, 0, newLength);
-
     // Extract the timestamp
     int timestampLength = secondComma - firstComma - 1;
     byte[] timestampBytes = new byte[timestampLength];
@@ -125,9 +120,16 @@ public class LibassJNI {
     long durationMs = SsaParser.parseTimecodeUs(new String(timestampBytes)) / 1000;
     Log.d(TAG, "durationMs: " + durationMs);
 
+    // Isolate the part after the end time.
+    // Ex:
+    //  From: "Dialogue: 0:00:00:00,0:00:05:00,1,0,Default,,0,0,0,,Line Text"
+    //  Result:                               "1,0,Default,,0,0,0,,Line Text"
+    int line_offset = secondComma + 1;
+    int line_length = offset + length - secondComma - 1;
+
     Long trackPtr = assTrackPtrs.get(trackId);
     if (trackPtr != null && trackPtr != 0) {
-      assProcessChunk(trackPtr, newBytes, newBytes.length, timecode, durationMs);
+      processChunkNative(trackPtr, data, line_offset, line_length, timecode, durationMs);
     } else {
       Log.e(TAG, "Cannot process chunk: track not found: " + trackId);
     }
@@ -253,8 +255,7 @@ public class LibassJNI {
    *
    * @param
    */
-
-  private native void assProcessChunk(long assTrackPtr, byte[] data, int size, long timecode, long duration);
+  private native void processChunkNative(long assTrackPtr, byte[] eventData, int offset, int length, long timecode, long duration);
 
   /**
    * Processes codec private data (subtitle headers) for the ASS_Track.
