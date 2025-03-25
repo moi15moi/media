@@ -506,21 +506,6 @@ Java_androidx_media3_decoder_ass_LibassJNI_renderFrameNative(
     return nullptr;
   }
 
-  // Report track event count for debugging
-  LOGD("Track contains: n_events=%d, n_styles=%d, time_ms=%lld",
-       track->n_events, track->n_styles, (long long)time_ms);
-
-  // Report first few events for debugging
-  if (track->n_events > 0) {
-    for (int i = 0; i < track->n_events && i < 3; i++) {  // Show up to 3 events
-      ASS_Event *event = &track->events[i];
-      LOGD("Event[%d]: Start=%lld, Duration=%lld, Text=%s",
-           i, (long long)event->Start, (long long)event->Duration,
-           event->Text ? event->Text : "null");
-    }
-  } else {
-    LOGD("No events found in track");
-  }
 
   // Check for changes in subtitle display
   int detect_change = 1;
@@ -567,14 +552,6 @@ Java_androidx_media3_decoder_ass_LibassJNI_renderFrameNative(
   // Clear the bitmap with transparent pixels
   memset(pixels, 0, bitmapInfo.stride * bitmapInfo.height);
 
-  // Count images for logging
-  int imageCount = 0;
-  ASS_Image *imgPtr = img;
-  while (imgPtr) {
-    imageCount++;
-    imgPtr = imgPtr->next;
-  }
-  LOGD("Found %d subtitle image components to render", imageCount);
 
   // Render all subtitle image components
   int renderedCount = 0;
@@ -584,9 +561,6 @@ Java_androidx_media3_decoder_ass_LibassJNI_renderFrameNative(
       continue;
     }
 
-    // Log image details for debugging
-    LOGD("Rendering image: pos=(%d,%d) size=%dx%d color=0x%08x",
-         current->dst_x, current->dst_y, current->w, current->h, current->color);
 
     // Calculate destination pointer in bitmap
     uint8_t *dst = reinterpret_cast<uint8_t *>(pixels) +
@@ -609,7 +583,6 @@ Java_androidx_media3_decoder_ass_LibassJNI_renderFrameNative(
 
   // Unlock the bitmap
   AndroidBitmap_unlockPixels(env, bitmap);
-  LOGD("Successfully rendered %d subtitle components at %lld ms", renderedCount, (long long)time_ms);
 
   return bitmap;
 }
