@@ -549,8 +549,6 @@ Java_androidx_media3_decoder_ass_LibassJNI_renderFrameNative(
     return nullptr;
   }
 
-  // Clear the bitmap with transparent pixels
-  memset(pixels, 0, bitmapInfo.stride * bitmapInfo.height);
 
 
   // Render all subtitle image components
