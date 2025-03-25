@@ -528,13 +528,12 @@ public final class AssRenderer extends BaseRenderer implements Callback {
    * @return A CueGroup containing a bitmap cue
    */
   private CueGroup bitmapToCueGroup(Bitmap bitmap, long positionUs) {
-    // Create a bitmap cue that covers the bottom portion of the screen
     Cue bitmapCue = new Cue.Builder()
         .setBitmap(bitmap)
-        .setPosition(0.5f) // Center horizontally
-        .setPositionAnchor(Cue.ANCHOR_TYPE_MIDDLE) // Anchor at center
-        .setLine(0.95f, Cue.LINE_TYPE_FRACTION) // Position near bottom of screen
-        .setLineAnchor(Cue.ANCHOR_TYPE_END) // Anchor at bottom
+        .setPosition(0.0f)
+        .setPositionAnchor(Cue.ANCHOR_TYPE_START)
+        .setLine(0.0f, Cue.LINE_TYPE_FRACTION)
+        .setLineAnchor(Cue.ANCHOR_TYPE_START)
         .setSize(1.0f) // Full width
         .build();
 
