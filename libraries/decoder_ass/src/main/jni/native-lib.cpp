@@ -558,8 +558,8 @@ Java_androidx_media3_decoder_ass_LibassJNI_renderFrameNative(
   // Lock pixels for direct manipulation
   AndroidBitmapInfo bitmapInfo;
   void *pixels = nullptr;
-  if (AndroidBitmap_getInfo(env, bitmap, &bitmapInfo) < 0 ||
-      AndroidBitmap_lockPixels(env, bitmap, &pixels) < 0) {
+  if (AndroidBitmap_getInfo(env, bitmap, &bitmapInfo) != ANDROID_BITMAP_RESULT_SUCCESS ||
+      AndroidBitmap_lockPixels(env, bitmap, &pixels) != ANDROID_BITMAP_RESULT_SUCCESS) {
     LOGE("Unable to lock bitmap pixels");
     return nullptr;
   }
