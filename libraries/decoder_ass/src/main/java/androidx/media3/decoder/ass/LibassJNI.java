@@ -161,12 +161,11 @@ public class LibassJNI {
   @Nullable
   public Object renderFrame(String trackId, long timeMs) {
     Long trackPtr = assTrackPtrs.get(trackId);
-    if (trackPtr != null && trackPtr != 0) {
-      return renderFrameNative(assRendererPtr, trackPtr, timeMs);
-    } else {
-      Log.e(TAG, "Cannot render frame: track not found: " + trackId);
+    if (trackPtr == null) {
+      Log.w(TAG, "The trackID '" + trackId + "' isn't registered.");
       return null;
     }
+    return renderFrameNative(assRendererPtr, trackPtr, timeMs);
   }
 
   /**
