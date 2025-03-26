@@ -61,7 +61,9 @@ static void draw_ass_rgba(uint8_t *dst, ptrdiff_t dst_stride,
 
 // Callback de libass pour les messages d'erreur
 void libass_msg_callback(int level, const char *fmt, va_list args, void *data) {
+  if (level < 6) {
     __android_log_vprint(ANDROID_LOG_DEBUG, "LIBASS_LOG", fmt, args);
+  }
 }
 
 // Lit un fichier depuis les assets Android
@@ -515,7 +517,6 @@ Java_androidx_media3_decoder_ass_LibassJNI_renderFrameNative(
 
   // If no images to render, return null
   if (!img) {
-    LOGD("No subtitle images to render at %lld ms", (long long)time_ms);
     return nullptr;
   }
 

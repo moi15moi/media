@@ -213,7 +213,6 @@ public final class AssRenderer extends BaseRenderer implements Callback {
   @Override
   protected void onStreamChanged(Format[] formats, long startPositionUs, long offsetUs,
                                  MediaSource.MediaPeriodId mediaPeriodId) {
-    Log.d(TAG, "Called on streamChanged");
     streamFormat = formats[0];
     Metadata metadata = streamFormat.metadata;
     maybeInitLibassJNI();
@@ -301,14 +300,13 @@ public final class AssRenderer extends BaseRenderer implements Callback {
     }
 
     if (outputStreamEnded) {
-      Log.d(TAG, "I AM HERE!!!!");
       return;
     }
 
     maybeInitLibassJNI();
 
     if (currentTrackId == null) {
-      Log.d(TAG, "I AM HERE2!!!!");
+      Log.w(TAG, "No track ID found. Skipping rendering.");
       return;
     }
 
@@ -329,19 +327,14 @@ public final class AssRenderer extends BaseRenderer implements Callback {
 
       long subtitleStartTimestamp = getPresentationTimeUs(cueDecoderInputBuffer.timeUs) / 1000;
       ByteBuffer textData = checkNotNull(cueDecoderInputBuffer.data);
-      String lineText = new String(textData.array(), textData.position(), textData.remaining(), UTF_8);
-      Log.d(TAG, "Le texte reçu est " + lineText);
       libassJNI.prepareProcessChunk(textData.array(), textData.position(), textData.remaining(), subtitleStartTimestamp, currentTrackId);
-      Log.d(TAG, "Timestamp: " + subtitleStartTimestamp);
     }
 
     // Render current subtitles at the current position
-    //Log.d(TAG, "curentTrackId is : "+ currentTrackId);
     if (currentTrackId != null) {
       // Render the frame with libass
-      Object renderedFrame = libassJNI.renderFrame(
-          currentTrackId,
-          getPresentationTimeUs(positionUs) / 1000);
+      long renderTimeMs = getPresentationTimeUs(positionUs) / 1000;
+      Object renderedFrame = libassJNI.renderFrame(currentTrackId, renderTimeMs);
 
       // Convert to CueGroup and update output
       if (renderedFrame != null) {
@@ -387,12 +380,13 @@ public final class AssRenderer extends BaseRenderer implements Callback {
       try {
         maybeThrowStreamError();
       } catch (IOException e) {
+        Log.e(TAG, "Stream error", e);
         streamError = e;
       }
     }
 
     if (streamError != null) {
-      // Pas sûr
+      // TODO: Pas sûr
       return false;
     }
     // Don't block playback whilst subtitles are loading.
@@ -441,13 +435,11 @@ public final class AssRenderer extends BaseRenderer implements Callback {
 
   @Override
   public boolean handleMessage(Message msg) {
-    switch (msg.what) {
-      case MSG_UPDATE_OUTPUT:
-        invokeUpdateOutputInternal((CueGroup) msg.obj);
-        return true;
-      default:
-        throw new IllegalStateException();
+    if (msg.what == MSG_UPDATE_OUTPUT) {
+      invokeUpdateOutputInternal((CueGroup) msg.obj);
+      return true;
     }
+    throw new IllegalStateException();
   }
 
   @Override
@@ -458,17 +450,16 @@ public final class AssRenderer extends BaseRenderer implements Callback {
     switch (messageType) {
       case MSG_SET_VIDEO_OUTPUT_RESOLUTION:
         Size surfaceSize = (Size) checkNotNull(message, "Surface size message cannot be null");
-        Log.d(TAG, "Surface: " + surfaceSize.getWidth() + "x" + surfaceSize.getHeight());
         libassJNI.setFrameSize(surfaceSize.getWidth(), surfaceSize.getHeight());
         break;
 
       case MSG_EVENT_VIDEO_SIZE_CHANGED:
         VideoSize videoSize = (VideoSize) checkNotNull(message, "Video size message cannot be null");
-        Log.d(TAG, "Vidéo: " + videoSize.width + "x" + videoSize.height);
         libassJNI.setStorageSize(videoSize.width, videoSize.height);
         break;
 
       case MSG_EVENT_VIDEO_FORMAT_CHANGED:
+        // TODO: Handle this case properly in the alpha blending
         Format videoFormat = (Format) checkNotNull(message, "Video format message cannot be null");
         if (videoFormat.colorInfo != null) {
           Log.d(TAG, "videoFormat.colorInfo = " + videoFormat.colorInfo);

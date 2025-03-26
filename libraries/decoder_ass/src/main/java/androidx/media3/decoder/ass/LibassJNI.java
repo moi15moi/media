@@ -127,7 +127,6 @@ public class LibassJNI {
     System.arraycopy(data, firstComma + 1, timestampBytes, 0, timestampLength);
 
     long durationMs = SsaParser.parseTimecodeUs(new String(timestampBytes)) / 1000;
-    Log.d(TAG, "durationMs: " + durationMs);
 
     // Isolate the part after the end time.
     // Ex:
