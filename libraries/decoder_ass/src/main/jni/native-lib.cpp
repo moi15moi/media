@@ -14,48 +14,26 @@
 static int g_frame_width = 1280;
 static int g_frame_height = 720;
 
-// Fonction de rendu RGBA adaptée de mpv-player
-// Mélange les pixels des sous-titres (src) avec le buffer de destination (dst)
-// en prenant en compte le canal alpha et la couleur spécifique des sous-titres
-// Provient de mpv: https://github.com/mpv-player/mpv/blob/bc96b23ef686d29efe95d54a4fd1836c177d7a61/sub/draw_bmp.c#L295-L338
 static void draw_ass_rgba(uint8_t *dst, ptrdiff_t dst_stride,
                           const uint8_t *src, ptrdiff_t src_stride,
                           int w, int h, uint32_t color) {
-  // 1. Extraction CORRECTE du format RGBA de libass
-  const unsigned int ass_r = (color >> 24) & 0xff; // Rouge (bits 24-31)
-  const unsigned int ass_g = (color >> 16) & 0xff; // Vert (bits 16-23)
-  const unsigned int ass_b = (color >> 8) & 0xff; // Bleu (bits 8-15)
-  const unsigned int ass_a = 0xff - (color & 0xff); // Alpha inversé (ASS utilise 0 = opaque)
+  const uint8_t ass_r = (color >> 24) & 0xff; // Red (bits 24-31)
+  const uint8_t ass_g = (color >> 16) & 0xff; // Green (bits 16-23)
+  const uint8_t ass_b = (color >> 8) & 0xff; // Blue (bits 8-15)
+  const uint8_t ass_a = 0xff - (color & 0xff); // Inverted Alpha (ASS uses 0 = opaque)
 
-  // Parcours de tous les pixels de l'image
-  for (int y = 0; y < h; y++) {
-    for (int x = 0; x < w; x++) {
-      const unsigned int v = src[x]; // Alpha du sous-titre
-
-      // 2. Extraction des composantes DESTINATION (ANDROID_BITMAP_FORMAT_RGBA_8888.)
-      unsigned int dst_r = dst[x * 4 + 0];
-      unsigned int dst_g = dst[x * 4 + 1];
-      unsigned int dst_b = dst[x * 4 + 2];
-      unsigned int dst_a = dst[x * 4 + 3];
-
-      // 3. Calcul du blending alpha
-      unsigned int aa = ass_a * v;
-      unsigned int blend_factor = 255 * 255 - aa;
-
-      // Mélange des canaux (ASS + Destination)
-      unsigned int out_r = (v * ass_r * ass_a + dst_r * blend_factor) / (255 * 255);
-      unsigned int out_g = (v * ass_g * ass_a + dst_g * blend_factor) / (255 * 255);
-      unsigned int out_b = (v * ass_b * ass_a + dst_b * blend_factor) / (255 * 255);
-      unsigned int out_a = (aa * 255 + dst_a * blend_factor) / (255 * 255);
-
-      // 4. Réassemblage en RBGA pour Android
-      dst[x * 4 + 0] = out_r;
-      dst[x * 4 + 1] = out_g;
-      dst[x * 4 + 2] = out_b;
-      dst[x * 4 + 3] = out_a;
+  // From libass: https://github.com/libass/libass/blob/1b699559025185e34d21a24cac477ca360cb917d/test/test.c#L149-L165
+  const uint16_t ROUNDING_OFFSET = 255 * 255 / 2;
+  for (size_t y = 0; y < h; y++) {
+    for (size_t x = 0; x < w; x++) {
+      uint16_t k = src[x] * ass_a;
+      dst[x * 4 + 0] = (k * ass_r + (255 * 255 - k) * dst[x * 4 + 0] + ROUNDING_OFFSET) / (255 * 255);
+      dst[x * 4 + 1] = (k * ass_g + (255 * 255 - k) * dst[x * 4 + 1] + ROUNDING_OFFSET) / (255 * 255);
+      dst[x * 4 + 2] = (k * ass_b + (255 * 255 - k) * dst[x * 4 + 2] + ROUNDING_OFFSET) / (255 * 255);
+      dst[x * 4 + 3] = (k * 255   + (255 * 255 - k) * dst[x * 4 + 3] + ROUNDING_OFFSET) / (255 * 255);
     }
-    dst += dst_stride;
     src += src_stride;
+    dst += dst_stride;
   }
 }
 
