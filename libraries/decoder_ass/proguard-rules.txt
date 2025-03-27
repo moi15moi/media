@@ -4,3 +4,8 @@
 -keepclasseswithmembernames class * {
     native <methods>;
 }
+
+# Some members of these classes are being accessed from other modules via reflection. Keep them unobfuscated.
+-keep class androidx.media3.decoder.ass.AssLibrary {
+    *;
+}
