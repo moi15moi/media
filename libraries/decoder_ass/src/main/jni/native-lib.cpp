@@ -43,7 +43,7 @@ void libass_msg_callback(int level, const char *fmt, va_list args, void *data) {
 }
 
 // Function to initialize the ASS_Library
-LIBASS_FUNC(jlong, initAssLibrary) {
+LIBASS_FUNC(jlong, assLibraryInit) {
   ASS_Library *library = ass_library_init();
   if (!library) {
     LOGE("Failed to initialize ASS_Library");
@@ -56,7 +56,7 @@ LIBASS_FUNC(jlong, initAssLibrary) {
 }
 
 // Destroy ASS_Library
-LIBASS_FUNC(void, destroyAssLibrary, jlong ass_library_ptr) {
+LIBASS_FUNC(void, assLibraryDone, jlong ass_library_ptr) {
   ASS_Library *library = reinterpret_cast<ASS_Library *>(ass_library_ptr);
   if (library) {
     ass_library_done(library);
@@ -67,7 +67,7 @@ LIBASS_FUNC(void, destroyAssLibrary, jlong ass_library_ptr) {
 }
 
 // add fonts to the library
-LIBASS_FUNC(void, addFont, jlong ass_library_ptr, jstring font_name, jbyteArray font_data) {
+LIBASS_FUNC(void, assAddFont, jlong ass_library_ptr, jstring font_name, jbyteArray font_data) {
   ASS_Library *library = reinterpret_cast<ASS_Library *>(ass_library_ptr);
   if (!library) {
     LOGE("ASS_Library pointer is null");
@@ -101,7 +101,7 @@ LIBASS_FUNC(void, addFont, jlong ass_library_ptr, jstring font_name, jbyteArray 
 }
 
 // Prepare data for processChunk
-LIBASS_FUNC(void, processChunkNative, jlong track, jbyteArray eventData,
+LIBASS_FUNC(void, assProcessChunk, jlong track, jbyteArray eventData,
             jint offset, jint length, jlong timecode, jlong duration) {
   jbyte *data = env->GetByteArrayElements(eventData, nullptr);
   if (!data) {
@@ -116,7 +116,7 @@ LIBASS_FUNC(void, processChunkNative, jlong track, jbyteArray eventData,
 
 
 // Initialize the ASS_Renderer
-LIBASS_FUNC(jlong, initAssRenderer, jlong ass_library_ptr) {
+LIBASS_FUNC(jlong, assRendererInit, jlong ass_library_ptr) {
   ASS_Library *library = reinterpret_cast<ASS_Library *>(ass_library_ptr);
   if (!library) {
     LOGE("ASS_Library pointer is null during renderer initialization");
@@ -136,7 +136,7 @@ LIBASS_FUNC(jlong, initAssRenderer, jlong ass_library_ptr) {
 
 
 // Destroy Ass Renderer instance
-LIBASS_FUNC(void, destroyAssRenderer, jlong ass_renderer_ptr) {
+LIBASS_FUNC(void, assRendererDone, jlong ass_renderer_ptr) {
   ASS_Renderer *renderer = reinterpret_cast<ASS_Renderer *>(ass_renderer_ptr);
   if (renderer) {
     ass_renderer_done(renderer);
@@ -147,7 +147,7 @@ LIBASS_FUNC(void, destroyAssRenderer, jlong ass_renderer_ptr) {
 }
 
 // Sets the frame size for the ASS_Renderer.
-LIBASS_FUNC(void, setFrameSizeNative, jlong ass_renderer_ptr, jint width, jint height) {
+LIBASS_FUNC(void, assSetFrameSize, jlong ass_renderer_ptr, jint width, jint height) {
   LOGD("setFrameSizeNative called with renderer=%p, width=%d, height=%d",
        (void *) ass_renderer_ptr, width, height);
 
@@ -164,7 +164,7 @@ LIBASS_FUNC(void, setFrameSizeNative, jlong ass_renderer_ptr, jint width, jint h
 
 
 // Sets the storage size for the ASS_Renderer.
-LIBASS_FUNC(void, setStorageSizeNative, jlong ass_renderer_ptr, jint width, jint height) {
+LIBASS_FUNC(void, assSetStorageSize, jlong ass_renderer_ptr, jint width, jint height) {
   ASS_Renderer *renderer = reinterpret_cast<ASS_Renderer *>(ass_renderer_ptr);
   if (!renderer) {
     LOGE("ASS_Renderer pointer is null when setting storage size");
@@ -176,7 +176,7 @@ LIBASS_FUNC(void, setStorageSizeNative, jlong ass_renderer_ptr, jint width, jint
 }
 
 // Creates new ASS_Track
-LIBASS_FUNC(jlong, createTrackNative, jlong ass_library_ptr) {
+LIBASS_FUNC(jlong, assNewTrack, jlong ass_library_ptr) {
   auto *library = reinterpret_cast<ASS_Library *>(ass_library_ptr);
   if (!library) {
     LOGE("ASS_Library pointer is null when creating track");
@@ -195,7 +195,7 @@ LIBASS_FUNC(jlong, createTrackNative, jlong ass_library_ptr) {
 
 
 // Destroys the ASS_Track instance.
-LIBASS_FUNC(void, destroyTrackNative, jlong ass_track_ptr) {
+LIBASS_FUNC(void, assFreeTrack, jlong ass_track_ptr) {
   ASS_Track *track = reinterpret_cast<ASS_Track *>(ass_track_ptr);
   if (track) {
     ass_free_track(track);
@@ -206,7 +206,7 @@ LIBASS_FUNC(void, destroyTrackNative, jlong ass_track_ptr) {
 }
 
 // Process codec private data
-LIBASS_FUNC(void, processCodecPrivateNative, jlong ass_track_ptr, jbyteArray data) {
+LIBASS_FUNC(void, assProcessCodecPrivate, jlong ass_track_ptr, jbyteArray data) {
   ASS_Track *track = reinterpret_cast<ASS_Track *>(ass_track_ptr);
   if (!track) {
     LOGE("ASS_Track pointer is null when processing codec private data");

@@ -21,12 +21,12 @@ public class LibassJNI {
       throw new RuntimeException("Libass native library is not available");
     }
 
-    assLibraryPtr = initAssLibrary();
+    assLibraryPtr = assLibraryInit();
     if (assLibraryPtr == 0) {
       throw new RuntimeException("Failed to initialize ASS_Library");
     }
 
-    assRendererPtr = initAssRenderer(assLibraryPtr);
+    assRendererPtr = assRendererInit(assLibraryPtr);
     if (assRendererPtr == 0) {
       throw new RuntimeException("Failed to initialize ASS_Renderer");
     }
@@ -51,7 +51,7 @@ public class LibassJNI {
    * @param height The height of the storage in pixels.
    */
   public void setStorageSize(int width, int height) {
-      setStorageSizeNative(assRendererPtr, width, height);
+    assSetStorageSize(assRendererPtr, width, height);
   }
 
   /**
@@ -65,7 +65,7 @@ public class LibassJNI {
       return;
     }
 
-    long trackPtr = createTrackNative(assLibraryPtr);
+    long trackPtr = assNewTrack(assLibraryPtr);
     if (trackPtr == 0) {
       throw new RuntimeException("Failed to create ASS_Track");
     }
@@ -80,12 +80,12 @@ public class LibassJNI {
    */
   public void releaseTrack(String trackId) {
     Long trackPtr = assTrackPtrs.remove(trackId);
-    destroyTrackNative(trackPtr);
+    assFreeTrack(trackPtr);
     Log.d(TAG, "Released track with ID: " + trackId);
   }
 
   /**
-   * Prepares and formats data to then call {@link #processChunkNative}()}.
+   * Prepares and formats data to then call {@link #assProcessChunk}()}.
    *
    * @param data The ass subtitle event.
    * @param offset The index in {@code data} to start reading from (inclusive).
@@ -140,7 +140,7 @@ public class LibassJNI {
     int line_offset = secondComma + 1;
     int line_length = offset + length - secondComma - 1;
 
-    processChunkNative(trackPtr, data, line_offset, line_length, timecode, durationMs);
+    assProcessChunk(trackPtr, data, line_offset, line_length, timecode, durationMs);
   }
 
   /**
@@ -151,7 +151,7 @@ public class LibassJNI {
    */
   public void processCodecPrivate(String trackId, byte[] data) {
     Long trackPtr = assTrackPtrs.get(trackId);
-    processCodecPrivateNative(trackPtr, data);
+    assProcessCodecPrivate(trackPtr, data);
     Log.d(TAG, "Processed codec private data for track ID: " + trackId);
   }
 
@@ -181,7 +181,7 @@ public class LibassJNI {
    * @param fontData The raw byte data of the font.
    */
   public void loadFont(String fileName, byte[] fontData) {
-    addFont(assLibraryPtr, fileName, fontData);
+    assAddFont(assLibraryPtr, fileName, fontData);
   }
 
   @Override
@@ -189,16 +189,16 @@ public class LibassJNI {
     try {
       for (Map.Entry<String, Long> entry : assTrackPtrs.entrySet()) {
         if (entry.getValue() != 0) {
-          destroyTrackNative(entry.getValue());
+          assFreeTrack(entry.getValue());
           Log.d(TAG, "Finalized track: " + entry.getKey());
         }
       }
 
       if (assRendererPtr != 0) {
-        destroyAssRenderer(assRendererPtr);
+        assRendererDone(assRendererPtr);
       }
       if (assLibraryPtr != 0) {
-        destroyAssLibrary(assLibraryPtr);
+        assLibraryDone(assLibraryPtr);
       }
     } finally {
       super.finalize();
@@ -212,20 +212,20 @@ public class LibassJNI {
    * @param fontName The name of the font.
    * @param fontData The raw byte data of the font.
    */
-  private native void addFont(long assLibraryPtr, String fontName, byte[] fontData);
+  private native void assAddFont(long assLibraryPtr, String fontName, byte[] fontData);
 
   /**
    * Initializes the native ASS_Library and returns its pointer as a long.
    * This pointer must be passed to native methods that require it.
    */
-  private native long initAssLibrary();
+  private native long assLibraryInit();
 
   /**
    * Destroys the native ASS_Library instance.
    *
    * @param assLibraryPtr The pointer to the native ASS_Library instance.
    */
-  private native void destroyAssLibrary(long assLibraryPtr);
+  private native void assLibraryDone(long assLibraryPtr);
 
   /**
    * Initializes the native ASS_Renderer and returns its pointer as a long.
@@ -234,14 +234,14 @@ public class LibassJNI {
    * @param assLibraryPtr The pointer to the native ASS_Library instance.
    * @return The pointer to the native ASS_Renderer instance.
    */
-  private native long initAssRenderer(long assLibraryPtr);
+  private native long assRendererInit(long assLibraryPtr);
 
   /**
    * Destroys the native ASS_Renderer instance.
    *
    * @param assRendererPtr The pointer to the native ASS_Renderer instance.
    */
-  private native void destroyAssRenderer(long assRendererPtr);
+  private native void assRendererDone(long assRendererPtr);
 
   /**
    * Sets the frame size for the ASS_Renderer.
@@ -250,7 +250,7 @@ public class LibassJNI {
    * @param width The width of the frame in pixels.
    * @param height The height of the frame in pixels.
    */
-  private native void setFrameSizeNative(long assRendererPtr, int width, int height);
+  private native void assSetFrameSize(long assRendererPtr, int width, int height);
 
   /**
    * Sets the storage size for the ASS_Renderer.
@@ -259,7 +259,7 @@ public class LibassJNI {
    * @param width The width of the storage in pixels.
    * @param height The height of the storage in pixels.
    */
-  private native void setStorageSizeNative(long assRendererPtr, int width, int height);
+  private native void assSetStorageSize(long assRendererPtr, int width, int height);
 
   /**
    * Creates a new ASS_Track instance.
@@ -267,14 +267,14 @@ public class LibassJNI {
    * @param assLibraryPtr The pointer to the native ASS_Library instance.
    * @return The pointer to the created ASS_Track instance.
    */
-  private native long createTrackNative(long assLibraryPtr);
+  private native long assNewTrack(long assLibraryPtr);
 
   /**
    * Destroys the ASS_Track instance.
    *
    * @param assTrackPtr The pointer to the native ASS_Track instance.
    */
-  private native void destroyTrackNative(long assTrackPtr);
+  private native void assFreeTrack(long assTrackPtr);
 
 
   /**
@@ -287,7 +287,7 @@ public class LibassJNI {
    * @param timecode The timestamp in milliseconds.
    * @param duration The duration of the event.
    */
-  private native void processChunkNative(long assTrackPtr, byte[] eventData, int offset, int length, long timecode, long duration);
+  private native void assProcessChunk(long assTrackPtr, byte[] eventData, int offset, int length, long timecode, long duration);
 
 
   private native AssRenderResult renderFrameNative(long assRendererPtr, long assTrackPtr, int frame_width, int frame_height, long timeMs);
@@ -299,5 +299,5 @@ public class LibassJNI {
    * @param assTrackPtr The pointer to the native ASS_Track instance.
    * @param data The codec private data bytes.
    */
-  private native void processCodecPrivateNative(long assTrackPtr, byte[] data);
+  private native void assProcessCodecPrivate(long assTrackPtr, byte[] data);
 }
