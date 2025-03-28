@@ -11,8 +11,6 @@
 #define LOGD(...) __android_log_print(ANDROID_LOG_DEBUG, LOG_TAG, __VA_ARGS__)
 #define LOGE(...) __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, __VA_ARGS__)
 
-static int g_frame_width = 1280;
-static int g_frame_height = 720;
 
 static void draw_ass_rgba(uint8_t *dst, ptrdiff_t dst_stride,
                           const uint8_t *src, ptrdiff_t src_stride,
@@ -372,10 +370,6 @@ Java_androidx_media3_decoder_ass_LibassJNI_setFrameSizeNative(JNIEnv *env,
     return;
   }
 
-  //TODO: This is probably what causes the subtitles to appear at the wrong resolution right after loading the video
-  g_frame_height = height;
-  g_frame_width = width;
-
   LOGD("Calling ass_set_frame_size...");
   ass_set_frame_size(renderer, width, height);
   LOGD("ass_set_frame_size completed successfully");
@@ -506,6 +500,8 @@ Java_androidx_media3_decoder_ass_LibassJNI_renderFrameNative(
     jobject thiz,
     jlong ass_renderer_ptr,
     jlong ass_track_ptr,
+    jint frame_width,
+    jint frame_height,
     jlong time_ms) {
   ASS_Renderer *renderer = reinterpret_cast<ASS_Renderer *>(ass_renderer_ptr);
   ASS_Track *track = reinterpret_cast<ASS_Track *>(ass_track_ptr);
@@ -539,8 +535,8 @@ Java_androidx_media3_decoder_ass_LibassJNI_renderFrameNative(
   jobject bitmap = env->CallStaticObjectMethod(
       bitmapClass,
       createBitmapMethod,
-      g_frame_width,  // Use stored width
-      g_frame_height, // Use stored height
+      frame_width,
+      frame_height,
       env->GetStaticObjectField(
           env->FindClass("android/graphics/Bitmap$Config"),
           env->GetStaticFieldID(env->FindClass("android/graphics/Bitmap$Config"),

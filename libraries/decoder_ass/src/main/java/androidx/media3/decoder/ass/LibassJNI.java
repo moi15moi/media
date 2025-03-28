@@ -13,6 +13,9 @@ public class LibassJNI {
   private final long assRendererPtr;
   private final Map<String, Long> assTrackPtrs = new HashMap<>();
 
+  private int frame_width = 0;
+  private int frame_height = 0;
+
   public LibassJNI() {
     if (!AssLibrary.isAvailable()) {
       throw new RuntimeException("Libass native library is not available");
@@ -36,6 +39,8 @@ public class LibassJNI {
    * @param height The height of the frame in pixels.
    */
   public void setFrameSize(int width, int height) {
+      frame_width = width;
+      frame_height = height;
       setFrameSizeNative(assRendererPtr, width, height);
   }
 
@@ -164,7 +169,7 @@ public class LibassJNI {
       Log.w(TAG, "The trackID '" + trackId + "' isn't registered.");
       return null;
     }
-    return renderFrameNative(assRendererPtr, trackPtr, timeMs);
+    return renderFrameNative(assRendererPtr, trackPtr, frame_width, frame_height, timeMs);
   }
 
   /**
@@ -283,7 +288,7 @@ public class LibassJNI {
   private native void processChunkNative(long assTrackPtr, byte[] eventData, int offset, int length, long timecode, long duration);
 
 
-  private native Object renderFrameNative(long assRendererPtr, long assTrackPtr, long timeMs);
+  private native Object renderFrameNative(long assRendererPtr, long assTrackPtr, int frame_width, int frame_height, long timeMs);
 
 
   /**
