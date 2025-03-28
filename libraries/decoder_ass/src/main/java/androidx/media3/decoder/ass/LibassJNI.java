@@ -13,8 +13,10 @@ public class LibassJNI {
   private final long assRendererPtr;
   private final Map<String, Long> assTrackPtrs = new HashMap<>();
 
-  private int frame_width = 0;
-  private int frame_height = 0;
+  @Nullable
+  private Integer frame_width = null;
+  @Nullable
+  private Integer frame_height = null;
 
   public LibassJNI() {
     if (!AssLibrary.isAvailable()) {
@@ -168,6 +170,9 @@ public class LibassJNI {
     if (trackPtr == null) {
       Log.w(TAG, "The trackID '" + trackId + "' isn't registered.");
       return null;
+    }
+    if (frame_width == null || frame_height == null){
+      throw new RuntimeException("Frame size has not been set");
     }
     return renderFrameNative(assRendererPtr, trackPtr, frame_width, frame_height, timeMs);
   }
