@@ -13,10 +13,8 @@ public class LibassJNI {
   private final long assRendererPtr;
   private final Map<String, Long> assTrackPtrs = new HashMap<>();
 
-  @Nullable
-  private Integer frame_width = null;
-  @Nullable
-  private Integer frame_height = null;
+  @Nullable private Integer frame_width = null;
+  @Nullable private Integer frame_height = null;
 
   public LibassJNI() {
     if (!AssLibrary.isAvailable()) {
