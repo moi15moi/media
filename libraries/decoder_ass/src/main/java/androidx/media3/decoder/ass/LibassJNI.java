@@ -1,5 +1,6 @@
 package androidx.media3.decoder.ass;
 
+import androidx.annotation.Nullable;
 import androidx.media3.common.util.Log;
 import androidx.media3.extractor.text.ssa.SsaParser;
 import java.nio.charset.StandardCharsets;
@@ -11,6 +12,9 @@ public class LibassJNI {
   private final long assLibraryPtr;
   private final long assRendererPtr;
   private final Map<String, Long> assTrackPtrs = new HashMap<>();
+
+  @Nullable private Integer frame_width = null;
+  @Nullable private Integer frame_height = null;
 
   public LibassJNI() {
     if (!AssLibrary.isAvailable()) {
@@ -35,6 +39,8 @@ public class LibassJNI {
    * @param height The height of the frame in pixels.
    */
   public void setFrameSize(int width, int height) {
+      frame_width = width;
+      frame_height = height;
       setFrameSizeNative(assRendererPtr, width, height);
   }
 
@@ -126,7 +132,6 @@ public class LibassJNI {
     System.arraycopy(data, firstComma + 1, timestampBytes, 0, timestampLength);
 
     long durationMs = SsaParser.parseTimecodeUs(new String(timestampBytes)) / 1000;
-    Log.d(TAG, "durationMs: " + durationMs);
 
     // Isolate the part after the end time.
     // Ex:
@@ -148,6 +153,25 @@ public class LibassJNI {
     Long trackPtr = assTrackPtrs.get(trackId);
     processCodecPrivateNative(trackPtr, data);
     Log.d(TAG, "Processed codec private data for track ID: " + trackId);
+  }
+
+  /**
+   * Renders a frame for a specific track at the given timestamp.
+   *
+   * @param trackId The ID of the track to render.
+   * @param timeMs The timestamp in milliseconds.
+   * @return A bitmap with the rendered subtitle image, or null if no image was rendered.
+   */
+  public AssRenderResult renderFrame(String trackId, long timeMs) {
+    Long trackPtr = assTrackPtrs.get(trackId);
+    if (trackPtr == null) {
+      Log.w(TAG, "The trackID '" + trackId + "' isn't registered.");
+      return null;
+    }
+    if (frame_width == null || frame_height == null){
+      throw new RuntimeException("Frame size has not been set");
+    }
+    return renderFrameNative(assRendererPtr, trackPtr, frame_width, frame_height, timeMs);
   }
 
   /**
@@ -264,6 +288,10 @@ public class LibassJNI {
    * @param duration The duration of the event.
    */
   private native void processChunkNative(long assTrackPtr, byte[] eventData, int offset, int length, long timecode, long duration);
+
+
+  private native AssRenderResult renderFrameNative(long assRendererPtr, long assTrackPtr, int frame_width, int frame_height, long timeMs);
+
 
   /**
    * Processes codec private data (subtitle headers) for the ASS_Track.

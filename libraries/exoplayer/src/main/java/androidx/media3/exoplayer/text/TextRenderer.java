@@ -250,8 +250,6 @@ public final class TextRenderer extends BaseRenderer implements Callback {
 
   @Override
   public void render(long positionUs, long elapsedRealtimeUs) {
-    Log.d("Jeremie", "Render called" + getPresentationTimeUs(positionUs));
-
     if (isCurrentStreamFinal()
         && finalStreamEndPositionUs != C.TIME_UNSET
         && positionUs >= finalStreamEndPositionUs) {
