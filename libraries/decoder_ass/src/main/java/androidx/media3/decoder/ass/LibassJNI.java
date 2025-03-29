@@ -164,8 +164,7 @@ public class LibassJNI {
    * @param timeMs The timestamp in milliseconds.
    * @return A bitmap with the rendered subtitle image, or null if no image was rendered.
    */
-  @Nullable
-  public Object renderFrame(String trackId, long timeMs) {
+  public AssRenderResult renderFrame(String trackId, long timeMs) {
     Long trackPtr = assTrackPtrs.get(trackId);
     if (trackPtr == null) {
       Log.w(TAG, "The trackID '" + trackId + "' isn't registered.");
@@ -293,7 +292,7 @@ public class LibassJNI {
   private native void processChunkNative(long assTrackPtr, byte[] eventData, int offset, int length, long timecode, long duration);
 
 
-  private native Object renderFrameNative(long assRendererPtr, long assTrackPtr, int frame_width, int frame_height, long timeMs);
+  private native AssRenderResult renderFrameNative(long assRendererPtr, long assTrackPtr, int frame_width, int frame_height, long timeMs);
 
 
   /**

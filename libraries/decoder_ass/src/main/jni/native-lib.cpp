@@ -503,24 +503,23 @@ Java_androidx_media3_decoder_ass_LibassJNI_renderFrameNative(
     jint frame_width,
     jint frame_height,
     jlong time_ms) {
+  jclass resultClass = env->FindClass("androidx/media3/decoder/ass/AssRenderResult");
+  jmethodID resultConstructor = env->GetMethodID(resultClass, "<init>", "(Landroid/graphics/Bitmap;Z)V");
+
   ASS_Renderer *renderer = reinterpret_cast<ASS_Renderer *>(ass_renderer_ptr);
   ASS_Track *track = reinterpret_cast<ASS_Track *>(ass_track_ptr);
 
   if (!renderer || !track) {
     LOGE("Invalid pointers: renderer=%p, track=%p", renderer, track);
-    return nullptr;
+    return env->NewObject(resultClass, resultConstructor, (jobject) nullptr, JNI_FALSE);
   }
 
-
-  // Check for changes in subtitle display
-  int detect_change = 1;
-
-  // Render frame with libass
+  int detect_change;
   ASS_Image *img = ass_render_frame(renderer, track, time_ms, &detect_change);
+  jboolean changedSinceLastCall = detect_change ? JNI_TRUE : JNI_FALSE;
 
-  // If no images to render, return null
-  if (!img) {
-    return nullptr;
+  if (!detect_change || !img) {
+    return env->NewObject(resultClass, resultConstructor, (jobject) nullptr, changedSinceLastCall);
   }
 
   // Create an Android Bitmap
@@ -550,7 +549,7 @@ Java_androidx_media3_decoder_ass_LibassJNI_renderFrameNative(
   if (AndroidBitmap_getInfo(env, bitmap, &bitmapInfo) != ANDROID_BITMAP_RESULT_SUCCESS ||
       AndroidBitmap_lockPixels(env, bitmap, &pixels) != ANDROID_BITMAP_RESULT_SUCCESS) {
     LOGE("Unable to lock bitmap pixels");
-    return nullptr;
+    return env->NewObject(resultClass, resultConstructor, (jobject) nullptr, changedSinceLastCall);
   }
 
 
@@ -583,5 +582,5 @@ Java_androidx_media3_decoder_ass_LibassJNI_renderFrameNative(
   // Unlock the bitmap
   AndroidBitmap_unlockPixels(env, bitmap);
 
-  return bitmap;
+  return env->NewObject(resultClass, resultConstructor, bitmap, changedSinceLastCall);
 }

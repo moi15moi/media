@@ -334,15 +334,16 @@ public final class AssRenderer extends BaseRenderer implements Callback {
     if (currentTrackId != null) {
       // Render the frame with libass
       long renderTimeMs = getPresentationTimeUs(positionUs) / 1000;
-      Object renderedFrame = libassJNI.renderFrame(currentTrackId, renderTimeMs);
+      AssRenderResult renderResult = libassJNI.renderFrame(currentTrackId, renderTimeMs);
 
-      // Convert to CueGroup and update output
-      if (renderedFrame != null) {
-        CueGroup cueGroup = bitmapToCueGroup((Bitmap) renderedFrame, positionUs);
-        updateOutput(cueGroup);
-      } else {
-        // No subtitles to show at this time
-        clearOutput();
+      if (renderResult.changedSinceLastCall) {
+        if (renderResult.bitmap != null) {
+          CueGroup cueGroup = bitmapToCueGroup(renderResult.bitmap, positionUs);
+          updateOutput(cueGroup);
+        } else {
+          // No subtitles to show at this time
+          clearOutput();
+        }
       }
     }
   }
