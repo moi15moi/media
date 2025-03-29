@@ -9,3 +9,8 @@
 -keep class androidx.media3.decoder.ass.AssLibrary {
     *;
 }
+
+# Some members of this class are being accessed from native methods. Keep them unobfuscated.
+-keep class androidx.media3.decoder.ass.AssRenderResult {
+  *;
+}
