@@ -25,7 +25,7 @@ project(libassJNI C CXX)
 set(libass_location "${CMAKE_CURRENT_SOURCE_DIR}/ass/${ANDROID_ABI}")
 set(libass_binaries "${libass_location}/usr/local/lib")
 
-foreach(libass_lib fribidi harfbuzz unibreak freetype ass)
+foreach(libass_lib fribidi harfbuzz unibreak freetype expat fontconfig ass)
     set(libass_lib_filename lib${libass_lib}.a)
     set(libass_lib_file_path ${libass_binaries}/${libass_lib_filename})
 
@@ -53,4 +53,6 @@ target_link_libraries(assJNI
         fribidi
         harfbuzz
         unibreak
-        freetype)
+        freetype
+        fontconfig
+        expat)

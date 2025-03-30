@@ -51,7 +51,7 @@ cpp = '$CXX'
 ar = '$AR'
 nm = '$NM'
 strip = '$STRIP'
-pkg_config = 'pkg-config'
+pkg-config = 'pkg-config'
 
 [host_machine]
 system = 'android'
@@ -167,6 +167,59 @@ build_unibreak() {
     rm -f libunibreak-6.1.tar.gz
 }
 
+# Function to build Expat library
+build_expat() {
+    echo "Building Expat..."
+    cd "$BUILD_DIR"
+
+    if [ ! -d expat-2.7.1 ]; then
+        echo "Downloading and extracting Expat..."
+        wget -O expat-2.7.1.tar.xz https://github.com/libexpat/libexpat/releases/download/R_2_7_1/expat-2.7.1.tar.xz
+        tar -xf expat-2.7.1.tar.xz
+    fi
+
+    cd expat-2.7.1
+
+    ./configure --host=$TARGET \
+                --enable-static \
+                --disable-shared \
+                --with-pic
+
+    make -j$(nproc)
+    make DESTDIR="$ABS_BUILD_PATH" install
+    make distclean
+
+    cd "$BUILD_DIR"
+    rm -f expat-2.7.1.tar.xz
+}
+
+# Function to build Fontconfig library
+build_fontconfig() {
+    echo "Building Fontconfig..."
+    cd "$BUILD_DIR"
+
+    if [ ! -d fontconfig-2.16.0 ]; then
+        echo "Downloading and extracting Fontconfig..."
+        wget -O fontconfig-2.16.0.tar.xz https://www.freedesktop.org/software/fontconfig/release/fontconfig-2.16.0.tar.xz
+        tar -xf fontconfig-2.16.0.tar.xz
+    fi
+
+    cd fontconfig-2.16.0
+
+    meson setup build \
+        --cross-file "$CROSS_FILE_PATH" \
+        -Dtests=disabled \
+        -Ddoc=disabled \
+        -Dtools=disabled \
+        -Dxml-backend=expat
+
+    ninja -C build
+    DESTDIR="$ABS_BUILD_PATH" ninja -C build install
+    rm -rf build
+
+    cd "$BUILD_DIR"
+    rm -f fontconfig-2.16.0.tar.xz
+}
 
 # Function to build libass library
 build_libass() {
@@ -185,7 +238,7 @@ build_libass() {
                 --enable-static \
                 --disable-shared \
                 --with-pic \
-                --disable-require-system-font-provider
+                --enable-fontconfig
 
     make -j$(nproc)
     make DESTDIR="$ABS_BUILD_PATH" install
@@ -232,6 +285,10 @@ build_libass_and_dependencies() {
     build_fribidi
     echo "--------------------------------------------------------------"
     build_unibreak
+    echo "--------------------------------------------------------------"
+    build_expat
+    echo "--------------------------------------------------------------"
+    build_fontconfig
 
     # Build libass
     echo "--------------------------------------------------------------"
