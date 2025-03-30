@@ -4,9 +4,6 @@
 #include <jni.h>
 #include <string>
 #include <android/bitmap.h>
-#include <unistd.h>
-#include <sys/stat.h>
-#include <dirent.h>
 #include "ass/ass.h"
 #include "ass/ass_types.h"
 #include "fontconfig_handler.h"
