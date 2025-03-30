@@ -319,7 +319,7 @@ Java_androidx_media3_decoder_ass_LibassJNI_initAssRenderer(JNIEnv *env,
     return 0;
   }
 
-  // Let our automatic handler set up fontconfig without any user input
+  // Let the automatic handler set up fontconfig
   std::string fontconfigPath = AutoFontconfigHandler::setupFontconfig();
 
   if (!fontconfigPath.empty()) {

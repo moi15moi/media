@@ -69,7 +69,7 @@ class AutoFontconfigHandler {
       }
     }
 
-    // Last resort: try to write to /data/local/tmp which often works
+    // Last resort: try to write to /data/local/tmp
     std::string tmpPath = "/data/local/tmp";
     if (isWritable(tmpPath)) {
       std::string fontconfigDir = tmpPath + "/fontconfig";
