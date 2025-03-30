@@ -33,7 +33,7 @@ check_ndk_setup() {
     fi
 }
 
-
+# Function to create a Meson cross file for cross-compilation
 create_meson_cross_file() {
     local cpu_family=$CPU
     [ "$cpu_family" == "i686" ] && cpu_family=x86
@@ -61,7 +61,7 @@ endian = 'little'
 CROSSFILE
 }
 
-
+# Function to build HarfBuzz library
 build_harfbuzz() {
     echo "Building HarfBuzz..."
     cd "$BUILD_DIR"
@@ -87,7 +87,7 @@ build_harfbuzz() {
     rm -f harfbuzz-11.0.0.tar.xz
 }
 
-
+# Function to build FreeType library
 build_freetype() {
     echo "Building FreeType..."
     cd "$BUILD_DIR"
@@ -115,7 +115,7 @@ build_freetype() {
     rm -f freetype-2.13.3.tar.xz
 }
 
-
+# Function to build FriBidi library
 build_fribidi() {
     echo "Building FriBidi..."
     cd "$BUILD_DIR"
@@ -141,7 +141,7 @@ build_fribidi() {
     rm -f fribidi-1.0.16.tar.xz
 }
 
-
+# Function to build UniBreak library
 build_unibreak() {
     echo "Building UniBreak..."
     cd "$BUILD_DIR"
@@ -168,6 +168,7 @@ build_unibreak() {
 }
 
 
+# Function to build libass library
 build_libass() {
     echo "Building libass..."
     cd "$BUILD_DIR"
@@ -194,7 +195,7 @@ build_libass() {
     rm -f libass-0.17.3.tar.xz
 }
 
-
+# Function to build libass and its dependencies
 build_libass_and_dependencies() {
     echo "Building for $TARGET"
     # Set up cross-compilation environment
@@ -240,7 +241,7 @@ build_libass_and_dependencies() {
     rm "$CROSS_FILE_PATH"
 }
 
-
+# Main function to orchestrate the build process
 main () {
     # check_directory_structure
     check_ndk_setup
