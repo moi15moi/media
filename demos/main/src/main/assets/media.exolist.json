@@ -658,6 +658,10 @@
         "uri": "asset:///test_ass_sonny.mkv"
       },
       {
+        "name": "test_ass_sonny_NO_ATTACHMENT.mkv",
+        "uri": "asset:///test_ass_sonny_NO_ATTACHMENT.mkv"
+      },
+      {
         "name": "test_video_flac_with_red_mask.mkv",
         "uri": "asset:///test_video_flac_with_red_mask.mkv"
       },
