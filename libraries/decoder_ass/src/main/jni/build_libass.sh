@@ -66,12 +66,12 @@ build_harfbuzz() {
     echo "Building HarfBuzz..."
     cd "$BUILD_DIR"
 
-    if [ ! -d harfbuzz-10.2.0 ]; then
-        wget -O harfbuzz-10.2.0.tar.xz https://github.com/harfbuzz/harfbuzz/releases/download/10.2.0/harfbuzz-10.2.0.tar.xz
-        tar -xf harfbuzz-10.2.0.tar.xz
+    if [ ! -d harfbuzz-11.0.0 ]; then
+        wget -O harfbuzz-11.0.0.tar.xz https://github.com/harfbuzz/harfbuzz/releases/download/11.0.0/harfbuzz-11.0.0.tar.xz
+        tar -xf harfbuzz-11.0.0.tar.xz
     fi
 
-    cd harfbuzz-10.2.0
+    cd harfbuzz-11.0.0
 
     meson setup build \
         --cross-file "$CROSS_FILE_PATH" \
@@ -84,7 +84,7 @@ build_harfbuzz() {
     rm -rf build
 
     cd "$BUILD_DIR"
-    rm -f harfbuzz-10.2.0.tar.xz
+    rm -f harfbuzz-11.0.0.tar.xz
 }
 
 
