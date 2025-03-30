@@ -92,12 +92,12 @@ build_freetype() {
     echo "Building FreeType..."
     cd "$BUILD_DIR"
 
-    if [ ! -d freetype-2.13.2 ]; then
-        wget -O freetype-2.13.2.tar.xz https://downloads.sourceforge.net/freetype/freetype-2.13.2.tar.xz
-        tar -xf freetype-2.13.2.tar.xz
+    if [ ! -d freetype-2.13.3 ]; then
+        wget -O freetype-2.13.3.tar.xz https://downloads.sourceforge.net/freetype/freetype-2.13.3.tar.xz
+        tar -xf freetype-2.13.3.tar.xz
     fi
 
-    cd freetype-2.13.2
+    cd freetype-2.13.3
 
     ./autogen.sh
     ./configure --host=$TARGET \
@@ -112,7 +112,7 @@ build_freetype() {
     make distclean
 
     cd "$BUILD_DIR"
-    rm -f freetype-2.13.2.tar.xz
+    rm -f freetype-2.13.3.tar.xz
 }
 
 
