@@ -78,7 +78,6 @@ build_harfbuzz() {
         -Dtests=disabled \
         -Ddocs=disabled
 
-
     ninja -C build
     DESTDIR="$ABS_BUILD_PATH" ninja -C build install
     rm -rf build
