@@ -210,7 +210,7 @@ build_fontconfig() {
                 --disable-shared \
                 --with-pic \
                 --with-expat="$ABS_BUILD_PATH/usr/local" \
-                --sysconfdir=/etc
+                --disable-docs
 
     make -j$(nproc)
     make DESTDIR="$ABS_BUILD_PATH" install

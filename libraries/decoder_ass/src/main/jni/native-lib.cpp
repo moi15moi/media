@@ -4,8 +4,12 @@
 #include <jni.h>
 #include <string>
 #include <android/bitmap.h>
+#include <unistd.h>
+#include <sys/stat.h>
+#include <dirent.h>
 #include "ass/ass.h"
 #include "ass/ass_types.h"
+#include "fontconfig_configuration.h"
 
 #define LOG_TAG "assNative-lib"
 #define LOGD(...) __android_log_print(ANDROID_LOG_DEBUG, LOG_TAG, __VA_ARGS__)
@@ -315,10 +319,79 @@ Java_androidx_media3_decoder_ass_LibassJNI_initAssRenderer(JNIEnv *env,
     return NULL;
   }
 
-  // Basic configuration of the renderer
-  ass_set_fonts(renderer, NULL, NULL, ASS_FONTPROVIDER_AUTODETECT, NULL, 1);
+  // Define potential fontconfig cache locations
+  const char* fcCacheDirApp = "/data/data/androidx.media3.demo.main/cache/fontconfig";
+  const char* fcCacheDirUser = "/data/user/0/androidx.media3.demo.main/cache/fontconfig";
+  const char* fcCacheDirOld = "/data/user/0/androidx.media3.demo.main/cache/fontconfig-cache";
 
-  LOGD("ASS_Renderer initialized successfully");
+  // Check if fontconfig is already set up in any of the locations
+  char existingConfPath[512] = {0};
+
+  // Check all potential locations
+  const char* allPaths[] = {fcCacheDirApp, fcCacheDirUser, fcCacheDirOld};
+  const char* workingDir = NULL;
+
+  for (const char* dir : allPaths) {
+    char confPath[512];
+    snprintf(confPath, sizeof(confPath), "%s/fonts.conf", dir);
+
+    if (access(confPath, R_OK) == 0) {
+      // Found an existing configuration
+      LOGD("Found existing fontconfig configuration at: %s", confPath);
+      strncpy(existingConfPath, confPath, sizeof(existingConfPath) - 1);
+      workingDir = dir;
+      break;
+    }
+  }
+
+  // If we found an existing configuration, use it
+  if (workingDir && strlen(existingConfPath) > 0) {
+    LOGD("Using existing fontconfig configuration at: %s", existingConfPath);
+
+    // Set fontconfig environment variables
+    setenv("FONTCONFIG_PATH", workingDir, 1);
+    setenv("FONTCONFIG_FILE", existingConfPath, 1);
+
+    // Initialize with fontconfig
+    LOGD("Initializing libass with existing fontconfig support");
+    ass_set_fonts(renderer, NULL, "sans-serif", ASS_FONTPROVIDER_FONTCONFIG, existingConfPath, 1);
+    return reinterpret_cast<jlong>(renderer);
+  }
+
+  // No existing configuration found, set up a new one
+  // Create our standard directory
+  mkdir("/data/data/androidx.media3.demo.main/cache", 0755);
+  workingDir = fcCacheDirApp;
+
+  if (mkdir(workingDir, 0755) == 0 || errno == EEXIST) {
+    // Check if directory is writable
+    if (access(workingDir, W_OK) == 0) {
+      LOGD("Setting up fontconfig cache directory: %s", workingDir);
+
+      // Create fontconfig configuration file
+      char confPath[512];
+      snprintf(confPath, sizeof(confPath), "%s/fonts.conf", workingDir);
+
+      // Write the fontconfig configuration file
+      if (writeFontconfigFile(confPath, workingDir)) {
+        // Set fontconfig environment variables
+        setenv("FONTCONFIG_PATH", workingDir, 1);
+        setenv("FONTCONFIG_FILE", confPath, 1);
+
+        // Initialize with fontconfig
+        LOGD("Initializing libass with new fontconfig configuration");
+        ass_set_fonts(renderer, NULL, "sans-serif", ASS_FONTPROVIDER_FONTCONFIG, confPath, 1);
+        return reinterpret_cast<jlong>(renderer);
+      }
+    }
+  }
+
+  // Fallback if fontconfig setup failed
+  LOGD("Fontconfig setup failed, falling back to direct font approach");
+
+  ass_set_fonts(renderer, NULL, NULL, ASS_FONTPROVIDER_AUTODETECT, NULL, 1);
+  LOGD("ASS_Renderer initialized with direct font approach");
+
   return reinterpret_cast<jlong>(renderer);
 }
 
