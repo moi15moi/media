@@ -11,6 +11,13 @@
 #define LOGD(...) __android_log_print(ANDROID_LOG_DEBUG, LOG_TAG, __VA_ARGS__)
 #define LOGE(...) __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, __VA_ARGS__)
 
+#define LIBASS_FUNC(RETURN_TYPE, NAME, ...)                                \
+  extern "C" {                                                              \
+  JNIEXPORT RETURN_TYPE Java_androidx_media3_decoder_ass_LibassJNI_##NAME( \
+      JNIEnv* env, jobject thiz, ##__VA_ARGS__);                            \
+  }                                                                         \
+  JNIEXPORT RETURN_TYPE Java_androidx_media3_decoder_ass_LibassJNI_##NAME( \
+      JNIEnv* env, jobject thiz, ##__VA_ARGS__)
 
 static void draw_ass_rgba(uint8_t *dst, ptrdiff_t dst_stride,
                           const uint8_t *src, ptrdiff_t src_stride,
@@ -234,7 +241,10 @@ LIBASS_FUNC(void, assProcessCodecPrivate, jlong ass_track_ptr, jbyteArray data) 
  * Renders a frame for a specific track at the given timestamp.
  * This implementation includes diagnostic logging to help debug rendering issues.
  */
-LIBASS_FUNC(jobject, renderFrameNative, jlong ass_renderer_ptr, jlong ass_track_ptr, jint frame_width, jint frame_height, jlong time_ms) {
+LIBASS_FUNC(jobject, assRenderFrame, jlong ass_renderer_ptr, jlong ass_track_ptr, jint frame_width, jint frame_height, jlong time_ms) {
+  jclass resultClass = env->FindClass("androidx/media3/decoder/ass/AssRenderResult");
+  jmethodID resultConstructor = env->GetMethodID(resultClass, "<init>", "(Landroid/graphics/Bitmap;Z)V");
+
   ASS_Renderer *renderer = reinterpret_cast<ASS_Renderer *>(ass_renderer_ptr);
   ASS_Track *track = reinterpret_cast<ASS_Track *>(ass_track_ptr);
 

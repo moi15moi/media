@@ -8,13 +8,16 @@ import java.util.HashMap;
 import java.util.Map;
 
 public class LibassJNI {
+
   private final String TAG = "LibassJNI";
   private final long assLibraryPtr;
   private final long assRendererPtr;
   private final Map<String, Long> assTrackPtrs = new HashMap<>();
 
-  @Nullable private Integer frame_width = null;
-  @Nullable private Integer frame_height = null;
+  @Nullable
+  private Integer frame_width = null;
+  @Nullable
+  private Integer frame_height = null;
 
   public LibassJNI() {
     if (!AssLibrary.isAvailable()) {
@@ -35,19 +38,19 @@ public class LibassJNI {
   /**
    * Sets the frame size for the ASS_Renderer.
    *
-   * @param width The width of the frame in pixels.
+   * @param width  The width of the frame in pixels.
    * @param height The height of the frame in pixels.
    */
   public void setFrameSize(int width, int height) {
-      frame_width = width;
-      frame_height = height;
-      setFrameSizeNative(assRendererPtr, width, height);
+    frame_width = width;
+    frame_height = height;
+    assSetFrameSize(assRendererPtr, width, height);
   }
 
   /**
    * Sets the storage size for the ASS_Renderer.
    *
-   * @param width The width of the storage in pixels.
+   * @param width  The width of the storage in pixels.
    * @param height The height of the storage in pixels.
    */
   public void setStorageSize(int width, int height) {
@@ -87,11 +90,11 @@ public class LibassJNI {
   /**
    * Prepares and formats data to then call {@link #assProcessChunk}()}.
    *
-   * @param data The ass subtitle event.
-   * @param offset The index in {@code data} to start reading from (inclusive).
-   * @param length The number of bytes to read from {@code data}.
+   * @param data     The ass subtitle event.
+   * @param offset   The index in {@code data} to start reading from (inclusive).
+   * @param length   The number of bytes to read from {@code data}.
    * @param timecode The timestamp in milliseconds.
-   * @param trackId The ID of the track to process subtitles from.
+   * @param trackId  The ID of the track to process subtitles from.
    */
   public void prepareProcessChunk(
       byte[] data,
@@ -159,7 +162,7 @@ public class LibassJNI {
    * Renders a frame for a specific track at the given timestamp.
    *
    * @param trackId The ID of the track to render.
-   * @param timeMs The timestamp in milliseconds.
+   * @param timeMs  The timestamp in milliseconds.
    * @return A bitmap with the rendered subtitle image, or null if no image was rendered.
    */
   public AssRenderResult renderFrame(String trackId, long timeMs) {
@@ -168,10 +171,10 @@ public class LibassJNI {
       Log.w(TAG, "The trackID '" + trackId + "' isn't registered.");
       return null;
     }
-    if (frame_width == null || frame_height == null){
+    if (frame_width == null || frame_height == null) {
       throw new RuntimeException("Frame size has not been set");
     }
-    return renderFrameNative(assRendererPtr, trackPtr, frame_width, frame_height, timeMs);
+    return assRenderFrame(assRendererPtr, trackPtr, frame_width, frame_height, timeMs);
   }
 
   /**
@@ -209,8 +212,8 @@ public class LibassJNI {
    * Adds a font to the ASS_Library.
    *
    * @param assLibraryPtr The pointer to the native ASS_Library instance.
-   * @param fontName The name of the font.
-   * @param fontData The raw byte data of the font.
+   * @param fontName      The name of the font.
+   * @param fontData      The raw byte data of the font.
    */
   private native void assAddFont(long assLibraryPtr, String fontName, byte[] fontData);
 
@@ -247,8 +250,8 @@ public class LibassJNI {
    * Sets the frame size for the ASS_Renderer.
    *
    * @param assRendererPtr The pointer to the native ASS_Renderer instance.
-   * @param width The width of the frame in pixels.
-   * @param height The height of the frame in pixels.
+   * @param width          The width of the frame in pixels.
+   * @param height         The height of the frame in pixels.
    */
   private native void assSetFrameSize(long assRendererPtr, int width, int height);
 
@@ -256,8 +259,8 @@ public class LibassJNI {
    * Sets the storage size for the ASS_Renderer.
    *
    * @param assRendererPtr The pointer to the native ASS_Renderer instance.
-   * @param width The width of the storage in pixels.
-   * @param height The height of the storage in pixels.
+   * @param width          The width of the storage in pixels.
+   * @param height         The height of the storage in pixels.
    */
   private native void assSetStorageSize(long assRendererPtr, int width, int height);
 
@@ -281,23 +284,25 @@ public class LibassJNI {
    * Process a chunk of subtitle stream format
    *
    * @param assTrackPtr The pointer to the native ASS_Track instance.
-   * @param eventData The ass subtitle event.
-   * @param offset The index in {@code eventData} to start reading from (inclusive).
-   * @param length The number of bytes to read from {@code eventData}.
-   * @param timecode The timestamp in milliseconds.
-   * @param duration The duration of the event.
+   * @param eventData   The ass subtitle event.
+   * @param offset      The index in {@code eventData} to start reading from (inclusive).
+   * @param length      The number of bytes to read from {@code eventData}.
+   * @param timecode    The timestamp in milliseconds.
+   * @param duration    The duration of the event.
    */
-  private native void assProcessChunk(long assTrackPtr, byte[] eventData, int offset, int length, long timecode, long duration);
+  private native void assProcessChunk(long assTrackPtr, byte[] eventData, int offset, int length,
+      long timecode, long duration);
 
 
-  private native AssRenderResult renderFrameNative(long assRendererPtr, long assTrackPtr, int frame_width, int frame_height, long timeMs);
+  private native AssRenderResult assRenderFrame(long assRendererPtr, long assTrackPtr,
+      int frame_width, int frame_height, long timeMs);
 
 
   /**
    * Processes codec private data (subtitle headers) for the ASS_Track.
    *
    * @param assTrackPtr The pointer to the native ASS_Track instance.
-   * @param data The codec private data bytes.
+   * @param data        The codec private data bytes.
    */
   private native void assProcessCodecPrivate(long assTrackPtr, byte[] data);
 }
