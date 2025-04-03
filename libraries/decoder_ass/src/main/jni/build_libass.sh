@@ -33,7 +33,7 @@ check_ndk_setup() {
     fi
 }
 
-
+# Function to create a Meson cross file for cross-compilation
 create_meson_cross_file() {
     local cpu_family=$CPU
     [ "$cpu_family" == "i686" ] && cpu_family=x86
@@ -51,7 +51,7 @@ cpp = '$CXX'
 ar = '$AR'
 nm = '$NM'
 strip = '$STRIP'
-pkg_config = 'pkg-config'
+pkg-config = 'pkg-config'
 
 [host_machine]
 system = 'android'
@@ -61,43 +61,42 @@ endian = 'little'
 CROSSFILE
 }
 
-
+# Function to build HarfBuzz library
 build_harfbuzz() {
     echo "Building HarfBuzz..."
     cd "$BUILD_DIR"
 
-    if [ ! -d harfbuzz-10.2.0 ]; then
-        wget -O harfbuzz-10.2.0.tar.xz https://github.com/harfbuzz/harfbuzz/releases/download/10.2.0/harfbuzz-10.2.0.tar.xz
-        tar -xf harfbuzz-10.2.0.tar.xz
+    if [ ! -d harfbuzz-11.0.0 ]; then
+        wget -O harfbuzz-11.0.0.tar.xz https://github.com/harfbuzz/harfbuzz/releases/download/11.0.0/harfbuzz-11.0.0.tar.xz
+        tar -xf harfbuzz-11.0.0.tar.xz
     fi
 
-    cd harfbuzz-10.2.0
+    cd harfbuzz-11.0.0
 
     meson setup build \
         --cross-file "$CROSS_FILE_PATH" \
         -Dtests=disabled \
         -Ddocs=disabled
 
-
     ninja -C build
     DESTDIR="$ABS_BUILD_PATH" ninja -C build install
     rm -rf build
 
     cd "$BUILD_DIR"
-    rm -f harfbuzz-10.2.0.tar.xz
+    rm -f harfbuzz-11.0.0.tar.xz
 }
 
-
+# Function to build FreeType library
 build_freetype() {
     echo "Building FreeType..."
     cd "$BUILD_DIR"
 
-    if [ ! -d freetype-2.13.2 ]; then
-        wget -O freetype-2.13.2.tar.xz https://downloads.sourceforge.net/freetype/freetype-2.13.2.tar.xz
-        tar -xf freetype-2.13.2.tar.xz
+    if [ ! -d freetype-2.13.3 ]; then
+        wget -O freetype-2.13.3.tar.xz https://downloads.sourceforge.net/freetype/freetype-2.13.3.tar.xz
+        tar -xf freetype-2.13.3.tar.xz
     fi
 
-    cd freetype-2.13.2
+    cd freetype-2.13.3
 
     ./autogen.sh
     ./configure --host=$TARGET \
@@ -112,10 +111,10 @@ build_freetype() {
     make distclean
 
     cd "$BUILD_DIR"
-    rm -f freetype-2.13.2.tar.xz
+    rm -f freetype-2.13.3.tar.xz
 }
 
-
+# Function to build FriBidi library
 build_fribidi() {
     echo "Building FriBidi..."
     cd "$BUILD_DIR"
@@ -141,7 +140,7 @@ build_fribidi() {
     rm -f fribidi-1.0.16.tar.xz
 }
 
-
+# Function to build UniBreak library
 build_unibreak() {
     echo "Building UniBreak..."
     cd "$BUILD_DIR"
@@ -167,7 +166,61 @@ build_unibreak() {
     rm -f libunibreak-6.1.tar.gz
 }
 
+# Function to build Expat library
+build_expat() {
+    echo "Building Expat..."
+    cd "$BUILD_DIR"
 
+    if [ ! -d expat-2.7.1 ]; then
+        echo "Downloading and extracting Expat..."
+        wget -O expat-2.7.1.tar.xz https://github.com/libexpat/libexpat/releases/download/R_2_7_1/expat-2.7.1.tar.xz
+        tar -xf expat-2.7.1.tar.xz
+    fi
+
+    cd expat-2.7.1
+
+    ./configure --host=$TARGET \
+                --enable-static \
+                --disable-shared \
+                --with-pic
+
+    make -j$(nproc)
+    make DESTDIR="$ABS_BUILD_PATH" install
+    make distclean
+
+    cd "$BUILD_DIR"
+    rm -f expat-2.7.1.tar.xz
+}
+
+# Function to build Fontconfig library
+build_fontconfig() {
+    echo "Building Fontconfig..."
+    cd "$BUILD_DIR"
+
+    if [ ! -d fontconfig-2.16.0 ]; then
+        echo "Downloading and extracting Fontconfig..."
+        wget -O fontconfig-2.16.0.tar.xz https://www.freedesktop.org/software/fontconfig/release/fontconfig-2.16.0.tar.xz
+        tar -xf fontconfig-2.16.0.tar.xz
+    fi
+
+    cd fontconfig-2.16.0
+
+    meson setup build \
+        --cross-file "$CROSS_FILE_PATH" \
+        -Dtests=disabled \
+        -Ddoc=disabled \
+        -Dtools=disabled \
+        -Dxml-backend=expat
+
+    ninja -C build
+    DESTDIR="$ABS_BUILD_PATH" ninja -C build install
+    rm -rf build
+
+    cd "$BUILD_DIR"
+    rm -f fontconfig-2.16.0.tar.xz
+}
+
+# Function to build libass library
 build_libass() {
     echo "Building libass..."
     cd "$BUILD_DIR"
@@ -184,7 +237,7 @@ build_libass() {
                 --enable-static \
                 --disable-shared \
                 --with-pic \
-                --disable-require-system-font-provider
+                --enable-fontconfig
 
     make -j$(nproc)
     make DESTDIR="$ABS_BUILD_PATH" install
@@ -194,7 +247,7 @@ build_libass() {
     rm -f libass-0.17.3.tar.xz
 }
 
-
+# Function to build libass and its dependencies
 build_libass_and_dependencies() {
     echo "Building for $TARGET"
     # Set up cross-compilation environment
@@ -231,6 +284,10 @@ build_libass_and_dependencies() {
     build_fribidi
     echo "--------------------------------------------------------------"
     build_unibreak
+    echo "--------------------------------------------------------------"
+    build_expat
+    echo "--------------------------------------------------------------"
+    build_fontconfig
 
     # Build libass
     echo "--------------------------------------------------------------"
@@ -240,7 +297,7 @@ build_libass_and_dependencies() {
     rm "$CROSS_FILE_PATH"
 }
 
-
+# Main function to orchestrate the build process
 main () {
     # check_directory_structure
     check_ndk_setup
