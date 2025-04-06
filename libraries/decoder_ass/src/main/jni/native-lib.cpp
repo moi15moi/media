@@ -76,9 +76,7 @@ enum ColorSpaceMedia3 {
 
 constexpr ColorSpaceEnum getColorSpaceFromMedia3ColorSpace(ColorSpaceMedia3 color_space) {
   switch (color_space) {
-    case ColorSpaceMedia3::COLOR_SPACE_NO_VALUE:
-    case ColorSpaceMedia3::COLOR_SPACE_BT709:
-      return ColorSpaceEnum::BT709;
+    case ColorSpaceMedia3::COLOR_SPACE_NO_VALUE: case ColorSpaceMedia3::COLOR_SPACE_BT709: return ColorSpaceEnum::BT709;
     case ColorSpaceMedia3::COLOR_SPACE_BT601: return ColorSpaceEnum::BT601;
     case ColorSpaceMedia3::COLOR_SPACE_BT2020: return ColorSpaceEnum::BT2020;
     default: return ColorSpaceEnum::UNKNOWN;
