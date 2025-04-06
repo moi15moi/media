@@ -485,8 +485,11 @@ LIBASS_FUNC(jobject, assRenderFrame, jlong ass_renderer_ptr, jlong ass_track_ptr
       break;
   }
 
-  ColorSpace src_color_space = getColorSpace(src_color_space_enum);
+  ColorSpace src_color_space;
   ColorSpace dst_color_space = getColorSpace(dst_color_space_enum);
+  if (src_color_space_enum != ColorSpaceEnum::UNKNOWN) {
+    src_color_space = getColorSpace(src_color_space_enum);
+  }
 
   // Create an Android Bitmap
   jclass bitmapClass = env->FindClass("android/graphics/Bitmap");
