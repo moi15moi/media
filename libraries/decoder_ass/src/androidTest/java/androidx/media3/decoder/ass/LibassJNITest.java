@@ -18,6 +18,7 @@ package androidx.media3.decoder.ass;
 import static com.google.common.truth.Truth.assertThat;
 
 import android.graphics.Color;
+import androidx.annotation.Nullable;
 import androidx.media3.common.C;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 import java.nio.ByteBuffer;
@@ -31,12 +32,12 @@ import org.junit.runner.RunWith;
 @RunWith(AndroidJUnit4.class)
 public class LibassJNITest {
 
-  private String buildHeader(String ycbcrMatrix) {
+  private String buildHeader(@Nullable String ycbcrMatrix) {
     return "[Script Info]\n" +
         "ScriptType: v4.00+\n" +
         "WrapStyle: 0\n" +
         "ScaledBorderAndShadow: yes\n" +
-        "YCbCr Matrix: " + ycbcrMatrix + "\n" +
+        (ycbcrMatrix != null ? "YCbCr Matrix: " + ycbcrMatrix + "\n" : "") +
         "PlayResX: 640\n" +
         "PlayResY: 480\n" +
         "\n" +
@@ -45,7 +46,7 @@ public class LibassJNITest {
         "Style: Default,Arial,48,&H00000000,&H000000FF,&H00000000,&H00000000,0,0,0,0,100,100,0,0,1,0,0,2,0,0,0,1\n";
   }
 
-  private LibassJNI setupLibassJNI(String ycbcrMatrix, int videoColorSpace, int videoColorRange,
+  private LibassJNI setupLibassJNI(@Nullable String ycbcrMatrix, int videoColorSpace, int videoColorRange,
       int initialRed, int initialGreen, int initialBlue) {
     LibassJNI libassJNI = new LibassJNI();
     libassJNI.setFrameSize(640, 480);
@@ -130,9 +131,16 @@ public class LibassJNITest {
   }
 
   @Test
-  public void renderFrame_no_ycbcr_matrix() {
-    LibassJNI libassJNI = setupLibassJNI("None", C.COLOR_SPACE_BT709, C.COLOR_RANGE_FULL, 150,100,80);
+  public void renderFrame_none() {
+    LibassJNI libassJNI = setupLibassJNI("None", C.COLOR_SPACE_BT709, C.COLOR_RANGE_LIMITED, 150,100,80);
     AssRenderResult result = libassJNI.renderFrame("0", 0);
     assertCenterPixel(result, 150,100,80);
+  }
+
+  @Test
+  public void renderFrame_no_ycbcr_matrix() {
+    LibassJNI libassJNI = setupLibassJNI(null, C.COLOR_SPACE_BT709, C.COLOR_RANGE_LIMITED, 150,100,80);
+    AssRenderResult result = libassJNI.renderFrame("0", 0);
+    assertCenterPixel(result, 155, 104, 78);
   }
 }
