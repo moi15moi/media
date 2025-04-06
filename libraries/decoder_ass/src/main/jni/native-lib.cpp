@@ -109,9 +109,7 @@ enum ColorRangeMedia3 {
 
 constexpr ColorRange getColorRangeFromMedia3ColorRange(ColorRangeMedia3 color_range) {
   switch (color_range) {
-    case ColorRangeMedia3::COLOR_RANGE_NO_VALUE:
-    case ColorRangeMedia3::COLOR_RANGE_LIMITED:
-      return ColorRange::LIMITED;
+    case ColorRangeMedia3::COLOR_RANGE_NO_VALUE: case ColorRangeMedia3::COLOR_RANGE_LIMITED: return ColorRange::LIMITED;
     case ColorRangeMedia3::COLOR_RANGE_FULL: return ColorRange::FULL;
     default: return ColorRange::UNKNOWN;
   }
