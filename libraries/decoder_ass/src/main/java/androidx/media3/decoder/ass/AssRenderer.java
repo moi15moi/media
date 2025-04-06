@@ -462,8 +462,7 @@ public final class AssRenderer extends BaseRenderer implements Callback {
       case MSG_EVENT_VIDEO_FORMAT_CHANGED:
         Format videoFormat = (Format) checkNotNull(message, "Video format message cannot be null");
         if (videoFormat.colorInfo != null) {
-          libassJNI.setVideoColorSpace(videoFormat.colorInfo.colorSpace);
-          libassJNI.setVideoColorRange(videoFormat.colorInfo.colorRange);
+          libassJNI.setVideoColorProperties(videoFormat.colorInfo.colorSpace, videoFormat.colorInfo.colorRange);
         }
         break;
 

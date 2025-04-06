@@ -66,22 +66,14 @@ public class LibassJNI {
   }
 
   /**
-   * Sets the video color space
-   * that will be use for the alpha blending.
+   * Sets the video color space and color range
+   * that will be used for the alpha blending.
    *
    * @param videoColorSpace The video color space.
-   */
-  public void setVideoColorSpace(@C.ColorSpace int videoColorSpace) {
-    this.videoColorSpace = videoColorSpace;
-  }
-
-  /**
-   * Sets the video color range
-   * that will be use for the alpha blending.
-   *
    * @param videoColorRange The video color range.
    */
-  public void setVideoColorRange(@C.ColorRange int videoColorRange) {
+  public void setVideoColorProperties(@C.ColorSpace int videoColorSpace, @C.ColorRange int videoColorRange) {
+    this.videoColorSpace = videoColorSpace;
     this.videoColorRange = videoColorRange;
   }
 

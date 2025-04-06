@@ -50,8 +50,7 @@ public class LibassJNITest {
     LibassJNI libassJNI = new LibassJNI();
     libassJNI.setFrameSize(640, 480);
     libassJNI.setStorageSize(640, 480);
-    libassJNI.setVideoColorSpace(videoColorSpace);
-    libassJNI.setVideoColorRange(videoColorRange);
+    libassJNI.setVideoColorProperties(videoColorSpace, videoColorRange);
     libassJNI.createTrack("0");
 
     libassJNI.processCodecPrivate("0", buildHeader(ycbcrMatrix).getBytes(StandardCharsets.UTF_8));
