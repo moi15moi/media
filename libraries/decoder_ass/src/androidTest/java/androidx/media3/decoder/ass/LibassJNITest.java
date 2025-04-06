@@ -75,70 +75,70 @@ public class LibassJNITest {
   }
 
   @Test
-  public void renderFrame_TV601_to_TV709() {
+  public void renderFrameTV601ToTV709() {
     LibassJNI libassJNI = setupLibassJNI("TV.601", C.COLOR_SPACE_BT709, C.COLOR_RANGE_LIMITED, 150,100,80);
     AssRenderResult result = libassJNI.renderFrame("0", 0);
     assertCenterPixel(result, 155, 104, 78);
   }
 
   @Test
-  public void renderFrame_TV601_to_PC709() {
+  public void renderFrameTV601ToPC709() {
     LibassJNI libassJNI = setupLibassJNI("TV.601", C.COLOR_SPACE_BT709, C.COLOR_RANGE_FULL, 150, 100, 80);
     AssRenderResult result = libassJNI.renderFrame("0", 0);
     assertCenterPixel(result, 150, 105, 83);
   }
 
   @Test
-  public void renderFrame_TV709_to_TV601() {
+  public void renderFrameTV709ToTV601() {
     LibassJNI libassJNI = setupLibassJNI("TV.709", C.COLOR_SPACE_BT601, C.COLOR_RANGE_LIMITED, 150,100,80);
     AssRenderResult result = libassJNI.renderFrame("0", 0);
     assertCenterPixel(result, 146, 96, 81);
   }
 
   @Test
-  public void renderFrame_TV709_to_PC601() {
+  public void renderFrameTV709ToPC601() {
     LibassJNI libassJNI = setupLibassJNI("TV.709", C.COLOR_SPACE_BT601, C.COLOR_RANGE_FULL, 150,100,80);
     AssRenderResult result = libassJNI.renderFrame("0", 0);
     assertCenterPixel(result, 142, 98, 85);
   }
 
   @Test
-  public void renderFrame_TVFCC_to_TV709() {
+  public void renderFrameTVFCCToTV709() {
     LibassJNI libassJNI = setupLibassJNI("TV.FCC", C.COLOR_SPACE_BT709, C.COLOR_RANGE_LIMITED, 150,100,80);
     AssRenderResult result = libassJNI.renderFrame("0", 0);
     assertCenterPixel(result, 155, 104, 79);
   }
 
   @Test
-  public void renderFrame_TVFCC_to_PC709() {
+  public void renderFrameTVFCCToPC709() {
     LibassJNI libassJNI = setupLibassJNI("TV.FCC", C.COLOR_SPACE_BT709, C.COLOR_RANGE_FULL, 150,100,80);
     AssRenderResult result = libassJNI.renderFrame("0", 0);
     assertCenterPixel(result, 150, 105, 83);
   }
 
   @Test
-  public void renderFrame_TV240M_to_TV709() {
+  public void renderFrameTV240MToTV709() {
     LibassJNI libassJNI = setupLibassJNI("TV.240M", C.COLOR_SPACE_BT709, C.COLOR_RANGE_LIMITED, 150,100,80);
     AssRenderResult result = libassJNI.renderFrame("0", 0);
     assertCenterPixel(result, 150, 100, 80);
   }
 
   @Test
-  public void renderFrame_TV240M_to_PC709() {
+  public void renderFrameTV240MToPC709() {
     LibassJNI libassJNI = setupLibassJNI("TV.240M", C.COLOR_SPACE_BT709, C.COLOR_RANGE_FULL, 150,100,80);
     AssRenderResult result = libassJNI.renderFrame("0", 0);
     assertCenterPixel(result, 146, 101, 84);
   }
 
   @Test
-  public void renderFrame_none() {
+  public void renderFrameNone() {
     LibassJNI libassJNI = setupLibassJNI("None", C.COLOR_SPACE_BT709, C.COLOR_RANGE_LIMITED, 150,100,80);
     AssRenderResult result = libassJNI.renderFrame("0", 0);
     assertCenterPixel(result, 150,100,80);
   }
 
   @Test
-  public void renderFrame_no_ycbcr_matrix() {
+  public void renderFrameNoYcbcrMatrix() {
     LibassJNI libassJNI = setupLibassJNI(null, C.COLOR_SPACE_BT709, C.COLOR_RANGE_LIMITED, 150,100,80);
     AssRenderResult result = libassJNI.renderFrame("0", 0);
     assertCenterPixel(result, 155, 104, 78);
