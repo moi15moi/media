@@ -28,6 +28,8 @@ class RGB {
   double r_prime, g_prime, b_prime;
   uint8_t r, g, b;
 
+  RGB() = default;
+
   explicit RGB(uint8_t r, uint8_t g, uint8_t b) {
     this->r = r;
     this->g = g;
@@ -526,7 +528,7 @@ LIBASS_FUNC(jobject, assRenderFrame, jlong ass_renderer_ptr, jlong ass_track_ptr
     const uint8_t ass_a = 0xff - (current->color & 0xff); // Inverted Alpha (ASS uses 0 = opaque)
 
     RGB src_rgb = RGB(ass_r, ass_g, ass_b);
-    std::optional<RGB> dst_rgb;
+    RGB dst_rgb;
     if (src_color_space_enum == ColorSpaceEnum::UNKNOWN || src_color_range == ColorRange::UNKNOWN) {
       dst_rgb = src_rgb;
     } else {
@@ -544,7 +546,7 @@ LIBASS_FUNC(jobject, assRenderFrame, jlong ass_renderer_ptr, jlong ass_track_ptr
         current->stride,
         current->w,
         current->h,
-        dst_rgb.value(),
+        dst_rgb,
         ass_a
     );
   }
