@@ -128,4 +128,11 @@ public class LibassJNITest {
     AssRenderResult result = libassJNI.renderFrame("0", 0);
     assertCenterPixel(result, 146, 101, 84);
   }
+
+  @Test
+  public void renderFrame_no_ycbcr_matrix() {
+    LibassJNI libassJNI = setupLibassJNI("None", C.COLOR_SPACE_BT709, C.COLOR_RANGE_FULL, 150,100,80);
+    AssRenderResult result = libassJNI.renderFrame("0", 0);
+    assertCenterPixel(result, 150,100,80);
+  }
 }
