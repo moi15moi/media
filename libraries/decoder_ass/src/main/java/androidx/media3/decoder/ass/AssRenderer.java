@@ -83,7 +83,6 @@ public final class AssRenderer extends BaseRenderer implements Callback {
   @Nullable private final Handler outputHandler;
   private final TextOutput output;
   private final FormatHolder formatHolder;
-  private boolean inputStreamEnded;
   private boolean outputStreamEnded;
   @Nullable private Format streamFormat;
   private long lastRendererPositionUs;
@@ -201,7 +200,6 @@ public final class AssRenderer extends BaseRenderer implements Callback {
   protected void onPositionReset(long positionUs, boolean joining) {
     lastRendererPositionUs = positionUs;
     clearOutput();
-    inputStreamEnded = false;
     outputStreamEnded = false;
     finalStreamEndPositionUs = C.TIME_UNSET;
     lastTimestampUs = Long.MIN_VALUE;
