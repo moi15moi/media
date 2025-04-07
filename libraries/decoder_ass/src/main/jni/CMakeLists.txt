@@ -43,7 +43,7 @@ include_directories("${libass_location}/usr/local/include")
 
 add_library(assJNI
         SHARED
-        native-lib.cpp)
+        ass_jni.cpp)
 
 target_link_libraries(assJNI
         android
