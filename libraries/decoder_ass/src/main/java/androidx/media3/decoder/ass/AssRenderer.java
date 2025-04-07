@@ -18,7 +18,6 @@ package androidx.media3.decoder.ass;
 import static androidx.media3.common.util.Assertions.checkNotNull;
 import static androidx.media3.common.util.Assertions.checkState;
 import static java.lang.annotation.ElementType.TYPE_USE;
-import static java.nio.charset.StandardCharsets.UTF_8;
 
 import android.app.Activity;
 import android.graphics.Bitmap;
