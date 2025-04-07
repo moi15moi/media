@@ -41,7 +41,6 @@ import androidx.media3.common.util.Util;
 import androidx.media3.decoder.DecoderInputBuffer;
 import androidx.media3.exoplayer.BaseRenderer;
 import androidx.media3.exoplayer.ExoPlaybackException;
-import androidx.media3.exoplayer.ExoPlayer;
 import androidx.media3.exoplayer.FormatHolder;
 import androidx.media3.exoplayer.Renderer;
 import androidx.media3.exoplayer.RendererCapabilities;
@@ -143,11 +142,7 @@ public final class AssRenderer extends BaseRenderer implements Callback {
    *     directly on the player's internal rendering thread.
    */
   public AssRenderer(TextOutput output, @Nullable Looper outputLooper) {
-    this(output, outputLooper, SubtitleDecoderFactory.DEFAULT, null);
-  }
-
-  public AssRenderer(TextOutput output, @Nullable Looper outputLooper, SubtitleDecoderFactory subtitleDecoderFactory) {
-    this(output, outputLooper, subtitleDecoderFactory, null);
+    this(output, outputLooper, SubtitleDecoderFactory.DEFAULT);
   }
 
   /**
@@ -162,8 +157,7 @@ public final class AssRenderer extends BaseRenderer implements Callback {
   public AssRenderer(
       TextOutput output,
       @Nullable Looper outputLooper,
-      SubtitleDecoderFactory subtitleDecoderFactory,
-      ExoPlayer player) {
+      SubtitleDecoderFactory subtitleDecoderFactory) {
     super(C.TRACK_TYPE_TEXT);
     this.output = checkNotNull(output);
     this.outputHandler =
