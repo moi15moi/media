@@ -1,7 +1,8 @@
+#include <android/bitmap.h>
 #include <android/log.h>
 #include <cmath>
 #include <string>
-#include <android/bitmap.h>
+
 #include "ass/ass.h"
 #include "ass/ass_types.h"
 
