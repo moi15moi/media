@@ -1,8 +1,5 @@
-#include <android/asset_manager.h>
-#include <android/asset_manager_jni.h>
 #include <android/log.h>
 #include <cmath>
-#include <jni.h>
 #include <string>
 #include <android/bitmap.h>
 #include "ass/ass.h"
