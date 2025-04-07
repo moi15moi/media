@@ -69,7 +69,6 @@ public final class AssRenderer extends BaseRenderer implements Callback {
   private static final int MSG_UPDATE_OUTPUT = 1;
 
   private final DecoderInputBuffer assLineDecoderInputBuffer;
-  // Fields used with both CuesWithTiming
   @Nullable private final Handler outputHandler;
   private final TextOutput output;
   private final FormatHolder formatHolder;
