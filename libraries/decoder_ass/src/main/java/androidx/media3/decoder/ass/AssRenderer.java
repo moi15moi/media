@@ -105,7 +105,7 @@ public final class AssRenderer extends BaseRenderer implements Callback {
 
   private static final int MSG_UPDATE_OUTPUT = 1;
 
-  private final DecoderInputBuffer cueDecoderInputBuffer;
+  private final DecoderInputBuffer assLineDecoderInputBuffer;
   // Fields used with both CuesWithTiming
   @Nullable private final Handler outputHandler;
   private final TextOutput output;
@@ -142,7 +142,7 @@ public final class AssRenderer extends BaseRenderer implements Callback {
     this.output = checkNotNull(output);
     this.outputHandler =
         outputLooper == null ? null : Util.createHandler(outputLooper, /* callback= */ this);
-    this.cueDecoderInputBuffer =
+    this.assLineDecoderInputBuffer =
         new DecoderInputBuffer(DecoderInputBuffer.BUFFER_REPLACEMENT_MODE_NORMAL);
     formatHolder = new FormatHolder();
     finalStreamEndPositionUs = C.TIME_UNSET;
@@ -262,22 +262,22 @@ public final class AssRenderer extends BaseRenderer implements Callback {
     }
 
     while (!hasReadStreamToEnd() && lastTimestampUs < positionUs + SAMPLE_WINDOW_DURATION_US) {
-      cueDecoderInputBuffer.clear();
-      @ReadDataResult int result = readSource(formatHolder, cueDecoderInputBuffer, /* readFlags= */ 0);
-      if (result != C.RESULT_BUFFER_READ || cueDecoderInputBuffer.isEndOfStream()) {
+      assLineDecoderInputBuffer.clear();
+      @ReadDataResult int result = readSource(formatHolder, assLineDecoderInputBuffer, /* readFlags= */ 0);
+      if (result != C.RESULT_BUFFER_READ || assLineDecoderInputBuffer.isEndOfStream()) {
         break;
       }
 
-      lastTimestampUs = cueDecoderInputBuffer.timeUs;
+      lastTimestampUs = assLineDecoderInputBuffer.timeUs;
       boolean isDecodeOnly = lastTimestampUs < getLastResetPositionUs();
       if (isDecodeOnly) {
         continue;
       }
 
-      cueDecoderInputBuffer.flip();
+      assLineDecoderInputBuffer.flip();
 
-      long subtitleStartTimestamp = getPresentationTimeUs(cueDecoderInputBuffer.timeUs) / 1000;
-      ByteBuffer textData = checkNotNull(cueDecoderInputBuffer.data);
+      long subtitleStartTimestamp = getPresentationTimeUs(assLineDecoderInputBuffer.timeUs) / 1000;
+      ByteBuffer textData = checkNotNull(assLineDecoderInputBuffer.data);
       libassJNI.prepareProcessChunk(textData.array(), textData.position(), textData.remaining(), subtitleStartTimestamp, currentTrackId);
     }
 
