@@ -221,13 +221,6 @@ public final class AssRenderer extends BaseRenderer implements Callback {
           assHeaders.size() + " initialization data entries, expected at least 2.");
     }
     libassJNI.processCodecPrivate(currentTrackId, assHeaders.get(1));
-
-    /*
-    this.cuesResolver =
-        streamFormat.cueReplacementBehavior == Format.CUE_REPLACEMENT_BEHAVIOR_MERGE
-            ? new MergingCuesResolver()
-            : new ReplacingCuesResolver();
-     */
   }
 
 
@@ -251,8 +244,6 @@ public final class AssRenderer extends BaseRenderer implements Callback {
 
   @Override
   public void render(long positionUs, long elapsedRealtimeUs) {
-    //Log.d(TAG, "render() called at ms: " + getPresentationTimeUs(positionUs)/1000);
-    //Log.d(TAG, "curentTrackId is : "+ currentTrackId);
     if (isCurrentStreamFinal()
         && finalStreamEndPositionUs != C.TIME_UNSET
         && positionUs >= finalStreamEndPositionUs) {
@@ -292,7 +283,6 @@ public final class AssRenderer extends BaseRenderer implements Callback {
 
     // Render current subtitles at the current position
     if (currentTrackId != null) {
-      // Render the frame with libass
       long renderTimeMs = getPresentationTimeUs(positionUs) / 1000;
       AssRenderResult renderResult = libassJNI.renderFrame(currentTrackId, renderTimeMs);
 
@@ -442,7 +432,7 @@ public final class AssRenderer extends BaseRenderer implements Callback {
         .setPositionAnchor(Cue.ANCHOR_TYPE_START)
         .setLine(0.0f, Cue.LINE_TYPE_FRACTION)
         .setLineAnchor(Cue.ANCHOR_TYPE_START)
-        .setSize(1.0f) // Full width
+        .setSize(1.0f)
         .build();
 
     return new CueGroup(ImmutableList.of(bitmapCue), getPresentationTimeUs(positionUs));
