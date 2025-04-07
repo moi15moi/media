@@ -106,13 +106,7 @@ public final class AssRenderer extends BaseRenderer implements Callback {
   private static final int MSG_UPDATE_OUTPUT = 1;
 
   private final DecoderInputBuffer cueDecoderInputBuffer;
-  // Fields used when handling Subtitle objects from legacy samples.
-  private final SubtitleDecoderFactory subtitleDecoderFactory;
-  @Nullable private SubtitleDecoder subtitleDecoder;
-  @Nullable private SubtitleOutputBuffer subtitle;
-  @Nullable private SubtitleOutputBuffer nextSubtitle;
-
-  // Fields used with both CuesWithTiming and Subtitle objects
+  // Fields used with both CuesWithTiming
   @Nullable private final Handler outputHandler;
   private final TextOutput output;
   private final FormatHolder formatHolder;
@@ -141,28 +135,13 @@ public final class AssRenderer extends BaseRenderer implements Callback {
    *     Activity#getMainLooper()}. Null may be passed if the output should be called
    *     directly on the player's internal rendering thread.
    */
-  public AssRenderer(TextOutput output, @Nullable Looper outputLooper) {
-    this(output, outputLooper, SubtitleDecoderFactory.DEFAULT);
-  }
-
-  /**
-   * @param output The output.
-   * @param outputLooper The looper associated with the thread on which the output should be called.
-   *     If the output makes use of standard Android UI components, then this should normally be the
-   *     looper associated with the application's main thread, which can be obtained using {@link
-   *     Activity#getMainLooper()}. Null may be passed if the output should be called
-   *     directly on the player's internal rendering thread.
-   * @param subtitleDecoderFactory A factory from which to obtain {@link SubtitleDecoder} instances.
-   */
   public AssRenderer(
       TextOutput output,
-      @Nullable Looper outputLooper,
-      SubtitleDecoderFactory subtitleDecoderFactory) {
+      @Nullable Looper outputLooper) {
     super(C.TRACK_TYPE_TEXT);
     this.output = checkNotNull(output);
     this.outputHandler =
         outputLooper == null ? null : Util.createHandler(outputLooper, /* callback= */ this);
-    this.subtitleDecoderFactory = subtitleDecoderFactory;
     this.cueDecoderInputBuffer =
         new DecoderInputBuffer(DecoderInputBuffer.BUFFER_REPLACEMENT_MODE_NORMAL);
     formatHolder = new FormatHolder();
@@ -260,17 +239,6 @@ public final class AssRenderer extends BaseRenderer implements Callback {
     outputStreamEnded = false;
     finalStreamEndPositionUs = C.TIME_UNSET;
     lastTimestampUs = Long.MIN_VALUE;
-
-    /*if (streamFormat != null && !isCuesWithTiming(streamFormat)) {
-      if (decoderReplacementState != REPLACEMENT_STATE_NONE) {
-        replaceSubtitleDecoder();
-      } else {
-        releaseSubtitleBuffers();
-        SubtitleDecoder subtitleDecoder = checkNotNull(this.subtitleDecoder);
-        subtitleDecoder.flush();
-        subtitleDecoder.setOutputStartTimeUs(getLastResetPositionUs());
-      }
-    }*/
   }
 
   public void maybeInitLibassJNI() {
@@ -288,7 +256,6 @@ public final class AssRenderer extends BaseRenderer implements Callback {
     if (isCurrentStreamFinal()
         && finalStreamEndPositionUs != C.TIME_UNSET
         && positionUs >= finalStreamEndPositionUs) {
-      releaseSubtitleBuffers();
       outputStreamEnded = true;
     }
 
@@ -354,10 +321,6 @@ public final class AssRenderer extends BaseRenderer implements Callback {
       libassJNI.releaseTrack(currentTrackId);
       currentTrackId = null;
     }
-
-    if (subtitleDecoder != null) {
-      releaseSubtitleDecoder();
-    }
   }
 
   @Override
@@ -386,33 +349,6 @@ public final class AssRenderer extends BaseRenderer implements Callback {
     // Don't block playback whilst subtitles are loading.
     // Note: To change this behavior, it will be necessary to consider [Internal: b/12949941].
     return true;
-  }
-
-  private void releaseSubtitleBuffers() {
-    if (subtitle != null) {
-      subtitle.release();
-      subtitle = null;
-    }
-    if (nextSubtitle != null) {
-      nextSubtitle.release();
-      nextSubtitle = null;
-    }
-  }
-
-  private void releaseSubtitleDecoder() {
-    releaseSubtitleBuffers();
-    checkNotNull(subtitleDecoder).release();
-    subtitleDecoder = null;
-  }
-
-  private void initSubtitleDecoder() {
-    subtitleDecoder = subtitleDecoderFactory.createDecoder(checkNotNull(streamFormat));
-    subtitleDecoder.setOutputStartTimeUs(getLastResetPositionUs());
-  }
-
-  private void replaceSubtitleDecoder() {
-    releaseSubtitleDecoder();
-    initSubtitleDecoder();
   }
 
   private void updateOutput(CueGroup cueGroup) {
@@ -470,18 +406,6 @@ public final class AssRenderer extends BaseRenderer implements Callback {
   private void invokeUpdateOutputInternal(CueGroup cueGroup) {
     output.onCues(cueGroup.cues);
     output.onCues(cueGroup);
-  }
-
-  /**
-   * Called when {@link #subtitleDecoder} throws an exception, so it can be logged and playback can
-   * continue.
-   *
-   * <p>Logs {@code e} and resets state to allow decoding the next sample.
-   */
-  private void handleDecoderError(SubtitleDecoderException e) {
-    Log.e(TAG, "Subtitle decoding failed. streamFormat=" + streamFormat, e);
-    clearOutput();
-    replaceSubtitleDecoder();
   }
 
   @SideEffectFree
