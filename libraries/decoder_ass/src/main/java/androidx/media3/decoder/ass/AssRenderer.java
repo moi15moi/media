@@ -128,21 +128,6 @@ public final class AssRenderer extends BaseRenderer implements Callback {
     }
   }
 
-  /**
-   * Sets the position at which to stop rendering the current stream.
-   *
-   * <p>Must be called after {@link #setCurrentStreamFinal()}.
-   *
-   * @param streamEndPositionUs The position to stop rendering at or {@link C#LENGTH_UNSET} to
-   *     render until the end of the current stream.
-   */
-  // TODO(internal b/181312195): Remove this when it's no longer needed once subtitles are decoded
-  // on the loading side of SampleQueue.
-  public void setFinalStreamEndPositionUs(long streamEndPositionUs) {
-    checkState(isCurrentStreamFinal());
-    this.finalStreamEndPositionUs = streamEndPositionUs;
-  }
-
   @Override
   protected void onStreamChanged(Format[] formats, long startPositionUs, long offsetUs,
                                  MediaSource.MediaPeriodId mediaPeriodId) {
@@ -194,6 +179,9 @@ public final class AssRenderer extends BaseRenderer implements Callback {
     lastTimestampUs = Long.MIN_VALUE;
   }
 
+  /**
+   * Creates an instance of the Libass library if it doesn't already exist
+   */
   public void maybeInitLibassJNI() {
     if (this.libassJNI != null) {
       return;
@@ -266,7 +254,6 @@ public final class AssRenderer extends BaseRenderer implements Callback {
     lastRendererPositionUs = C.TIME_UNSET;
 
     // Release all tracks
-    // TODO: Double-check at the end of the development if this is the optimal solution.
     if (libassJNI != null && currentTrackId != null) {
       libassJNI.releaseTrack(currentTrackId);
       currentTrackId = null;
@@ -289,18 +276,19 @@ public final class AssRenderer extends BaseRenderer implements Callback {
       } catch (IOException e) {
         Log.e(TAG, "Stream error", e);
         streamError = e;
+        return false;
       }
-    }
-
-    if (streamError != null) {
-      // TODO: Pas sûr
-      return false;
     }
     // Don't block playback whilst subtitles are loading.
     // Note: To change this behavior, it will be necessary to consider [Internal: b/12949941].
     return true;
   }
-
+  
+  /**
+   * Updates the output with the given CueGroup.
+   * This method is called when the subtitles are ready to be displayed.
+   * @param cueGroup The CueGroup to be displayed.
+   */
   private void updateOutput(CueGroup cueGroup) {
     if (outputHandler != null) {
       outputHandler.obtainMessage(MSG_UPDATE_OUTPUT, cueGroup).sendToTarget();
@@ -309,6 +297,10 @@ public final class AssRenderer extends BaseRenderer implements Callback {
     }
   }
 
+  /**
+   * Clears the output by sending an empty CueGroup to the output.
+   * This is used to clear the output when there are no subtitles to display.
+   */
   private void clearOutput() {
     updateOutput(new CueGroup(ImmutableList.of(), getPresentationTimeUs(lastRendererPositionUs)));
   }
@@ -352,12 +344,21 @@ public final class AssRenderer extends BaseRenderer implements Callback {
     }
   }
 
-  @SuppressWarnings("deprecation") // We need to call both onCues method for backward compatibility.
+  /**
+   * We need to call both onCues methods for backward compatibility.
+   * @param cueGroup The CueGroup to be passed to the output.
+   */
+  @SuppressWarnings("deprecation")
   private void invokeUpdateOutputInternal(CueGroup cueGroup) {
     output.onCues(cueGroup.cues);
     output.onCues(cueGroup);
   }
 
+  /**
+   * Used to calculate the presentation time of the subtitles.
+   * @param positionUs The current playback position in microseconds.
+   * @return The presentation time in microseconds.
+   */
   @SideEffectFree
   private long getPresentationTimeUs(long positionUs) {
     checkState(positionUs != C.TIME_UNSET);

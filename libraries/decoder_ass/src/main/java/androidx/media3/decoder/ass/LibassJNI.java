@@ -200,6 +200,7 @@ public class LibassJNI {
    * @param timeMs  The timestamp in milliseconds.
    * @return A bitmap with the rendered subtitle image, or null if no image was rendered.
    */
+  @Nullable
   public AssRenderResult renderFrame(String trackId, long timeMs) {
     Long trackPtr = assTrackPtrs.get(trackId);
     if (trackPtr == null) {
