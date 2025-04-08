@@ -1,29 +1,15 @@
-# Build libass for Android
+# ASS decoder module
 
-The following script, `build_libass.sh`, as the name suggests, builds libass and its dependencies
-for Android platforms. It automates the process of cross-compiling libass and all its dependencies
-for Android. This enables Android applications to render complex subtitle formats with advanced
-styling and positioning.
+The ASS module provides `AssRenderer`, which uses libass for decoding
+and can render ssa/ass subtitle.
 
-The script builds the following libraries in sequence:
+## License note
 
-1. [HarfBuzz (v11.0.0)](https://github.com/harfbuzz/harfbuzz) - An OpenType text shaping engine
-2. [FreeType (v2.13.3)](https://freetype.org/) - A font rendering library
-3. [FriBidi (v1.0.16)](https://github.com/fribidi/fribidi/) - A library implementing the Unicode
-   Bidirectional Algorithm
-4. [UniBreak (v6.1)](https://github.com/adah1972/libunibreak/) - A line breaking library
-   implementing the Unicode Line Breaking Algorithm
-5. [Expat (v2.7.1)](https://github.com/libexpat/libexpat) - An XML parser library
-6. [Fontconfig (v2.16.0)](https://gitlab.freedesktop.org/fontconfig/fontconfig) - A library for font
-   customization and configuration
-7. [libass (v0.17.3)](https://github.com/libass/libass) - The subtitle rendering library
+Please note that whilst the code in this repository is licensed under
+[Apache 2.0][], using this module also requires building and including one or
+more external libraries as described below. These are licensed separately.
 
-All libraries are built as static libraries for four Android architectures:
-
-* x86_64
-* x86 (i686)
-* armeabi-v7a (armv7a)
-* arm64-v8a (aarch64)
+[Apache 2.0]: ../../LICENSE
 
 ## Build instructions
 
@@ -93,6 +79,34 @@ might look like:
 ```bash
 ./build_libass.sh ~/android-ndk-r27c linux-x86_64 21
 ```
+
+## Note about the build script
+
+The following script, `build_libass.sh`, as the name suggests, builds libass and its dependencies
+for Android platforms. It automates the process of cross-compiling libass and all its dependencies
+for Android. This enables Android applications to render complex subtitle formats with advanced
+styling and positioning.
+
+The script builds the following libraries in sequence:
+
+1. [HarfBuzz (v11.0.0)](https://github.com/harfbuzz/harfbuzz) - An OpenType text shaping engine
+2. [FreeType (v2.13.3)](https://freetype.org/) - A font rendering library
+3. [FriBidi (v1.0.16)](https://github.com/fribidi/fribidi/) - A library implementing the Unicode
+   Bidirectional Algorithm
+4. [UniBreak (v6.1)](https://github.com/adah1972/libunibreak/) - A line breaking library
+   implementing the Unicode Line Breaking Algorithm
+5. [Expat (v2.7.1)](https://github.com/libexpat/libexpat) - An XML parser library
+6. [Fontconfig (v2.16.0)](https://gitlab.freedesktop.org/fontconfig/fontconfig) - A library for font
+   customization and configuration
+7. [libass (v0.17.3)](https://github.com/libass/libass) - The subtitle rendering library
+
+All libraries are built as static libraries for four Android architectures:
+
+* x86_64
+* x86 (i686)
+* armeabi-v7a (armv7a)
+* arm64-v8a (aarch64)
+
 
 ## Troubleshooting
 
