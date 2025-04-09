@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016 The Android Open Source Project
+ * Copyright (C) 2025 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,8 +17,6 @@ package androidx.media3.decoder.ass;
 
 import static androidx.media3.common.util.Assertions.checkNotNull;
 import static androidx.media3.common.util.Assertions.checkState;
-import static java.lang.annotation.ElementType.TYPE_USE;
-import static java.nio.charset.StandardCharsets.UTF_8;
 
 import android.app.Activity;
 import android.graphics.Bitmap;
@@ -26,7 +24,6 @@ import android.os.Handler;
 import android.os.Handler.Callback;
 import android.os.Looper;
 import android.os.Message;
-import androidx.annotation.IntDef;
 import androidx.annotation.Nullable;
 import androidx.media3.common.C;
 import androidx.media3.common.Format;
@@ -42,24 +39,15 @@ import androidx.media3.common.util.Util;
 import androidx.media3.decoder.DecoderInputBuffer;
 import androidx.media3.exoplayer.BaseRenderer;
 import androidx.media3.exoplayer.ExoPlaybackException;
-import androidx.media3.exoplayer.ExoPlayer;
 import androidx.media3.exoplayer.FormatHolder;
 import androidx.media3.exoplayer.Renderer;
 import androidx.media3.exoplayer.RendererCapabilities;
 import androidx.media3.exoplayer.source.MediaSource;
 import androidx.media3.exoplayer.source.SampleStream.ReadDataResult;
-import androidx.media3.exoplayer.text.SubtitleDecoderFactory;
 import androidx.media3.exoplayer.text.TextOutput;
 import androidx.media3.extractor.mkv.FontMetadataEntry;
-import androidx.media3.extractor.text.SubtitleDecoder;
-import androidx.media3.extractor.text.SubtitleDecoderException;
-import androidx.media3.extractor.text.SubtitleOutputBuffer;
 import com.google.common.collect.ImmutableList;
 import java.io.IOException;
-import java.lang.annotation.Documented;
-import java.lang.annotation.Retention;
-import java.lang.annotation.RetentionPolicy;
-import java.lang.annotation.Target;
 import java.nio.ByteBuffer;
 import java.util.HashSet;
 import java.util.List;
@@ -78,47 +66,12 @@ public final class AssRenderer extends BaseRenderer implements Callback {
 
   private static final String TAG = "AssRenderer";
 
-  @Documented
-  @Retention(RetentionPolicy.SOURCE)
-  @Target(TYPE_USE)
-  @IntDef({
-    REPLACEMENT_STATE_NONE,
-    REPLACEMENT_STATE_SIGNAL_END_OF_STREAM,
-    REPLACEMENT_STATE_WAIT_END_OF_STREAM
-  })
-  private @interface ReplacementState {}
-
-  /** The decoder does not need to be replaced. */
-  private static final int REPLACEMENT_STATE_NONE = 0;
-
-  /**
-   * The decoder needs to be replaced, but we haven't yet signaled an end of stream to the existing
-   * decoder. We need to do so in order to ensure that it outputs any remaining buffers before we
-   * release it.
-   */
-  private static final int REPLACEMENT_STATE_SIGNAL_END_OF_STREAM = 1;
-
-  /**
-   * The decoder needs to be replaced, and we've signaled an end of stream to the existing decoder.
-   * We're waiting for the decoder to output an end of stream signal to indicate that it has output
-   * any remaining buffers before we release it.
-   */
-  private static final int REPLACEMENT_STATE_WAIT_END_OF_STREAM = 2;
-
   private static final int MSG_UPDATE_OUTPUT = 1;
 
-  private final DecoderInputBuffer cueDecoderInputBuffer;
-  // Fields used when handling Subtitle objects from legacy samples.
-  private final SubtitleDecoderFactory subtitleDecoderFactory;
-  @Nullable private SubtitleDecoder subtitleDecoder;
-  @Nullable private SubtitleOutputBuffer subtitle;
-  @Nullable private SubtitleOutputBuffer nextSubtitle;
-
-  // Fields used with both CuesWithTiming and Subtitle objects
+  private final DecoderInputBuffer assLineDecoderInputBuffer;
   @Nullable private final Handler outputHandler;
   private final TextOutput output;
   private final FormatHolder formatHolder;
-  private boolean inputStreamEnded;
   private boolean outputStreamEnded;
   @Nullable private Format streamFormat;
   private long lastRendererPositionUs;
@@ -143,34 +96,14 @@ public final class AssRenderer extends BaseRenderer implements Callback {
    *     Activity#getMainLooper()}. Null may be passed if the output should be called
    *     directly on the player's internal rendering thread.
    */
-  public AssRenderer(TextOutput output, @Nullable Looper outputLooper) {
-    this(output, outputLooper, SubtitleDecoderFactory.DEFAULT, null);
-  }
-
-  public AssRenderer(TextOutput output, @Nullable Looper outputLooper, SubtitleDecoderFactory subtitleDecoderFactory) {
-    this(output, outputLooper, subtitleDecoderFactory, null);
-  }
-
-  /**
-   * @param output The output.
-   * @param outputLooper The looper associated with the thread on which the output should be called.
-   *     If the output makes use of standard Android UI components, then this should normally be the
-   *     looper associated with the application's main thread, which can be obtained using {@link
-   *     Activity#getMainLooper()}. Null may be passed if the output should be called
-   *     directly on the player's internal rendering thread.
-   * @param subtitleDecoderFactory A factory from which to obtain {@link SubtitleDecoder} instances.
-   */
   public AssRenderer(
       TextOutput output,
-      @Nullable Looper outputLooper,
-      SubtitleDecoderFactory subtitleDecoderFactory,
-      ExoPlayer player) {
+      @Nullable Looper outputLooper) {
     super(C.TRACK_TYPE_TEXT);
     this.output = checkNotNull(output);
     this.outputHandler =
         outputLooper == null ? null : Util.createHandler(outputLooper, /* callback= */ this);
-    this.subtitleDecoderFactory = subtitleDecoderFactory;
-    this.cueDecoderInputBuffer =
+    this.assLineDecoderInputBuffer =
         new DecoderInputBuffer(DecoderInputBuffer.BUFFER_REPLACEMENT_MODE_NORMAL);
     formatHolder = new FormatHolder();
     finalStreamEndPositionUs = C.TIME_UNSET;
@@ -193,21 +126,6 @@ public final class AssRenderer extends BaseRenderer implements Callback {
     } else {
       return RendererCapabilities.create(C.FORMAT_UNSUPPORTED_TYPE);
     }
-  }
-
-  /**
-   * Sets the position at which to stop rendering the current stream.
-   *
-   * <p>Must be called after {@link #setCurrentStreamFinal()}.
-   *
-   * @param streamEndPositionUs The position to stop rendering at or {@link C#LENGTH_UNSET} to
-   *     render until the end of the current stream.
-   */
-  // TODO(internal b/181312195): Remove this when it's no longer needed once subtitles are decoded
-  // on the loading side of SampleQueue.
-  public void setFinalStreamEndPositionUs(long streamEndPositionUs) {
-    checkState(isCurrentStreamFinal());
-    this.finalStreamEndPositionUs = streamEndPositionUs;
   }
 
   @Override
@@ -249,13 +167,6 @@ public final class AssRenderer extends BaseRenderer implements Callback {
           assHeaders.size() + " initialization data entries, expected at least 2.");
     }
     libassJNI.processCodecPrivate(currentTrackId, assHeaders.get(1));
-
-    /*
-    this.cuesResolver =
-        streamFormat.cueReplacementBehavior == Format.CUE_REPLACEMENT_BEHAVIOR_MERGE
-            ? new MergingCuesResolver()
-            : new ReplacingCuesResolver();
-     */
   }
 
 
@@ -263,23 +174,14 @@ public final class AssRenderer extends BaseRenderer implements Callback {
   protected void onPositionReset(long positionUs, boolean joining) {
     lastRendererPositionUs = positionUs;
     clearOutput();
-    inputStreamEnded = false;
     outputStreamEnded = false;
     finalStreamEndPositionUs = C.TIME_UNSET;
     lastTimestampUs = Long.MIN_VALUE;
-
-    /*if (streamFormat != null && !isCuesWithTiming(streamFormat)) {
-      if (decoderReplacementState != REPLACEMENT_STATE_NONE) {
-        replaceSubtitleDecoder();
-      } else {
-        releaseSubtitleBuffers();
-        SubtitleDecoder subtitleDecoder = checkNotNull(this.subtitleDecoder);
-        subtitleDecoder.flush();
-        subtitleDecoder.setOutputStartTimeUs(getLastResetPositionUs());
-      }
-    }*/
   }
 
+  /**
+   * Creates an instance of the Libass library if it doesn't already exist
+   */
   public void maybeInitLibassJNI() {
     if (this.libassJNI != null) {
       return;
@@ -290,12 +192,9 @@ public final class AssRenderer extends BaseRenderer implements Callback {
 
   @Override
   public void render(long positionUs, long elapsedRealtimeUs) {
-    //Log.d(TAG, "render() called at ms: " + getPresentationTimeUs(positionUs)/1000);
-    //Log.d(TAG, "curentTrackId is : "+ currentTrackId);
     if (isCurrentStreamFinal()
         && finalStreamEndPositionUs != C.TIME_UNSET
         && positionUs >= finalStreamEndPositionUs) {
-      releaseSubtitleBuffers();
       outputStreamEnded = true;
     }
 
@@ -311,28 +210,27 @@ public final class AssRenderer extends BaseRenderer implements Callback {
     }
 
     while (!hasReadStreamToEnd() && lastTimestampUs < positionUs + SAMPLE_WINDOW_DURATION_US) {
-      cueDecoderInputBuffer.clear();
-      @ReadDataResult int result = readSource(formatHolder, cueDecoderInputBuffer, /* readFlags= */ 0);
-      if (result != C.RESULT_BUFFER_READ || cueDecoderInputBuffer.isEndOfStream()) {
+      assLineDecoderInputBuffer.clear();
+      @ReadDataResult int result = readSource(formatHolder, assLineDecoderInputBuffer, /* readFlags= */ 0);
+      if (result != C.RESULT_BUFFER_READ || assLineDecoderInputBuffer.isEndOfStream()) {
         break;
       }
 
-      lastTimestampUs = cueDecoderInputBuffer.timeUs;
+      lastTimestampUs = assLineDecoderInputBuffer.timeUs;
       boolean isDecodeOnly = lastTimestampUs < getLastResetPositionUs();
       if (isDecodeOnly) {
         continue;
       }
 
-      cueDecoderInputBuffer.flip();
+      assLineDecoderInputBuffer.flip();
 
-      long subtitleStartTimestamp = getPresentationTimeUs(cueDecoderInputBuffer.timeUs) / 1000;
-      ByteBuffer textData = checkNotNull(cueDecoderInputBuffer.data);
+      long subtitleStartTimestamp = getPresentationTimeUs(assLineDecoderInputBuffer.timeUs) / 1000;
+      ByteBuffer textData = checkNotNull(assLineDecoderInputBuffer.data);
       libassJNI.prepareProcessChunk(textData.array(), textData.position(), textData.remaining(), subtitleStartTimestamp, currentTrackId);
     }
 
     // Render current subtitles at the current position
     if (currentTrackId != null) {
-      // Render the frame with libass
       long renderTimeMs = getPresentationTimeUs(positionUs) / 1000;
       AssRenderResult renderResult = libassJNI.renderFrame(currentTrackId, renderTimeMs);
 
@@ -356,14 +254,9 @@ public final class AssRenderer extends BaseRenderer implements Callback {
     lastRendererPositionUs = C.TIME_UNSET;
 
     // Release all tracks
-    // TODO: Double-check at the end of the development if this is the optimal solution.
     if (libassJNI != null && currentTrackId != null) {
       libassJNI.releaseTrack(currentTrackId);
       currentTrackId = null;
-    }
-
-    if (subtitleDecoder != null) {
-      releaseSubtitleDecoder();
     }
   }
 
@@ -383,45 +276,19 @@ public final class AssRenderer extends BaseRenderer implements Callback {
       } catch (IOException e) {
         Log.e(TAG, "Stream error", e);
         streamError = e;
+        return false;
       }
-    }
-
-    if (streamError != null) {
-      // TODO: Pas sûr
-      return false;
     }
     // Don't block playback whilst subtitles are loading.
     // Note: To change this behavior, it will be necessary to consider [Internal: b/12949941].
     return true;
   }
-
-  private void releaseSubtitleBuffers() {
-    if (subtitle != null) {
-      subtitle.release();
-      subtitle = null;
-    }
-    if (nextSubtitle != null) {
-      nextSubtitle.release();
-      nextSubtitle = null;
-    }
-  }
-
-  private void releaseSubtitleDecoder() {
-    releaseSubtitleBuffers();
-    checkNotNull(subtitleDecoder).release();
-    subtitleDecoder = null;
-  }
-
-  private void initSubtitleDecoder() {
-    subtitleDecoder = subtitleDecoderFactory.createDecoder(checkNotNull(streamFormat));
-    subtitleDecoder.setOutputStartTimeUs(getLastResetPositionUs());
-  }
-
-  private void replaceSubtitleDecoder() {
-    releaseSubtitleDecoder();
-    initSubtitleDecoder();
-  }
-
+  
+  /**
+   * Updates the output with the given CueGroup.
+   * This method is called when the subtitles are ready to be displayed.
+   * @param cueGroup The CueGroup to be displayed.
+   */
   private void updateOutput(CueGroup cueGroup) {
     if (outputHandler != null) {
       outputHandler.obtainMessage(MSG_UPDATE_OUTPUT, cueGroup).sendToTarget();
@@ -430,6 +297,10 @@ public final class AssRenderer extends BaseRenderer implements Callback {
     }
   }
 
+  /**
+   * Clears the output by sending an empty CueGroup to the output.
+   * This is used to clear the output when there are no subtitles to display.
+   */
   private void clearOutput() {
     updateOutput(new CueGroup(ImmutableList.of(), getPresentationTimeUs(lastRendererPositionUs)));
   }
@@ -473,24 +344,21 @@ public final class AssRenderer extends BaseRenderer implements Callback {
     }
   }
 
-  @SuppressWarnings("deprecation") // We need to call both onCues method for backward compatibility.
+  /**
+   * We need to call both onCues methods for backward compatibility.
+   * @param cueGroup The CueGroup to be passed to the output.
+   */
+  @SuppressWarnings("deprecation")
   private void invokeUpdateOutputInternal(CueGroup cueGroup) {
     output.onCues(cueGroup.cues);
     output.onCues(cueGroup);
   }
 
   /**
-   * Called when {@link #subtitleDecoder} throws an exception, so it can be logged and playback can
-   * continue.
-   *
-   * <p>Logs {@code e} and resets state to allow decoding the next sample.
+   * Used to calculate the presentation time of the subtitles.
+   * @param positionUs The current playback position in microseconds.
+   * @return The presentation time in microseconds.
    */
-  private void handleDecoderError(SubtitleDecoderException e) {
-    Log.e(TAG, "Subtitle decoding failed. streamFormat=" + streamFormat, e);
-    clearOutput();
-    replaceSubtitleDecoder();
-  }
-
   @SideEffectFree
   private long getPresentationTimeUs(long positionUs) {
     checkState(positionUs != C.TIME_UNSET);
@@ -525,7 +393,7 @@ public final class AssRenderer extends BaseRenderer implements Callback {
         .setPositionAnchor(Cue.ANCHOR_TYPE_START)
         .setLine(0.0f, Cue.LINE_TYPE_FRACTION)
         .setLineAnchor(Cue.ANCHOR_TYPE_START)
-        .setSize(1.0f) // Full width
+        .setSize(1.0f)
         .build();
 
     return new CueGroup(ImmutableList.of(bitmapCue), getPresentationTimeUs(positionUs));
