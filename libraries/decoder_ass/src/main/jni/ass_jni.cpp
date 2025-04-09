@@ -21,10 +21,6 @@
 #include "ass/ass.h"
 #include "ass/ass_types.h"
 
-#define LOG_TAG "assNative-lib"
-#define LOGD(...) __android_log_print(ANDROID_LOG_DEBUG, LOG_TAG, __VA_ARGS__)
-#define LOGE(...) __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, __VA_ARGS__)
-
 #define LIBASS_FUNC(RETURN_TYPE, NAME, ...)                                \
   extern "C" {                                                              \
   JNIEXPORT RETURN_TYPE Java_androidx_media3_decoder_ass_LibassJNI_##NAME( \
@@ -235,10 +231,8 @@ void libass_msg_callback(int level, const char *fmt, va_list args, void *data) {
 LIBASS_FUNC(jlong, assLibraryInit) {
   ASS_Library *library = ass_library_init();
   if (!library) {
-    LOGE("Failed to initialize ASS_Library");
     return reinterpret_cast<jlong>(nullptr);
   }
-  LOGD("ASS_Library initialized successfully");
 
   ass_set_message_cb(library, libass_msg_callback, nullptr);
   return reinterpret_cast<jlong>(library);
@@ -249,9 +243,6 @@ LIBASS_FUNC(void, assLibraryDone, jlong ass_library_ptr) {
   ASS_Library *library = reinterpret_cast<ASS_Library *>(ass_library_ptr);
   if (library) {
     ass_library_done(library);
-    LOGD("ASS_Library destroyed successfully");
-  } else {
-    LOGE("ASS_Library pointer is null during destruction");
   }
 }
 
@@ -259,30 +250,24 @@ LIBASS_FUNC(void, assLibraryDone, jlong ass_library_ptr) {
 LIBASS_FUNC(void, assAddFont, jlong ass_library_ptr, jstring font_name, jbyteArray font_data) {
   ASS_Library *library = reinterpret_cast<ASS_Library *>(ass_library_ptr);
   if (!library) {
-    LOGE("ASS_Library pointer is null");
     return;
   }
 
   // Convert jstring to const char *
   const char *name = env->GetStringUTFChars(font_name, nullptr);
   if (!name) {
-    LOGE("Failed to convert font name to UTF-8");
     return;
   }
-  LOGD("Adding font: %s", name);
 
   // Convert jbyteArray to const char *
   jbyte *data = env->GetByteArrayElements(font_data, nullptr);
   if (!data) {
-    LOGE("Failed to get font data from byte array");
     env->ReleaseStringUTFChars(font_name, name);
     return;
   }
   jsize data_size = env->GetArrayLength(font_data);
-  LOGD("Font data size: %d bytes", data_size);
 
   ass_add_font(library, name, reinterpret_cast<const char *>(data), data_size);
-  LOGD("Font added successfully: %s", name);
 
   // Release the JNI resources
   env->ReleaseStringUTFChars(font_name, name);
@@ -294,7 +279,6 @@ LIBASS_FUNC(void, assProcessChunk, jlong track, jbyteArray eventData,
             jint offset, jint length, jlong timecode, jlong duration) {
   jbyte *data = env->GetByteArrayElements(eventData, nullptr);
   if (!data) {
-    LOGE("Failed to get data");
     return;
   }
 
@@ -308,18 +292,15 @@ LIBASS_FUNC(void, assProcessChunk, jlong track, jbyteArray eventData,
 LIBASS_FUNC(jlong, assRendererInit, jlong ass_library_ptr) {
   ASS_Library *library = reinterpret_cast<ASS_Library *>(ass_library_ptr);
   if (!library) {
-    LOGE("ASS_Library pointer is null during renderer initialization");
     return NULL;
   }
 
   ASS_Renderer *renderer = ass_renderer_init(library);
   if (!renderer) {
-    LOGE("Failed to initialize ASS_Renderer");
     return NULL;
   }
 
   ass_set_fonts(renderer, NULL, NULL, ASS_FONTPROVIDER_AUTODETECT, NULL, 1);
-  LOGD("ASS_Renderer initialized successfully");
   return reinterpret_cast<jlong>(renderer);
 }
 
@@ -329,26 +310,18 @@ LIBASS_FUNC(void, assRendererDone, jlong ass_renderer_ptr) {
   ASS_Renderer *renderer = reinterpret_cast<ASS_Renderer *>(ass_renderer_ptr);
   if (renderer) {
     ass_renderer_done(renderer);
-    LOGD("ASS_Renderer destroyed successfully");
-  } else {
-    LOGE("ASS_Renderer pointer is null during destruction");
   }
 }
 
 // Sets the frame size for the ASS_Renderer.
 LIBASS_FUNC(void, assSetFrameSize, jlong ass_renderer_ptr, jint width, jint height) {
-  LOGD("setFrameSizeNative called with renderer=%p, width=%d, height=%d",
-       (void *) ass_renderer_ptr, width, height);
 
   ASS_Renderer *renderer = reinterpret_cast<ASS_Renderer *>(ass_renderer_ptr);
   if (!renderer) {
-    LOGE("ASS_Renderer pointer is null when setting frame size");
     return;
   }
 
-  LOGD("Calling ass_set_frame_size...");
   ass_set_frame_size(renderer, width, height);
-  LOGD("ass_set_frame_size completed successfully");
 }
 
 
@@ -356,29 +329,24 @@ LIBASS_FUNC(void, assSetFrameSize, jlong ass_renderer_ptr, jint width, jint heig
 LIBASS_FUNC(void, assSetStorageSize, jlong ass_renderer_ptr, jint width, jint height) {
   ASS_Renderer *renderer = reinterpret_cast<ASS_Renderer *>(ass_renderer_ptr);
   if (!renderer) {
-    LOGE("ASS_Renderer pointer is null when setting storage size");
     return;
   }
 
   ass_set_storage_size(renderer, width, height);
-  LOGD("Storage size set to %d x %d", width, height);
 }
 
 // Creates new ASS_Track
 LIBASS_FUNC(jlong, assNewTrack, jlong ass_library_ptr) {
   auto *library = reinterpret_cast<ASS_Library *>(ass_library_ptr);
   if (!library) {
-    LOGE("ASS_Library pointer is null when creating track");
     return NULL;
   }
 
   ASS_Track *track = ass_new_track(library);
   if (!track) {
-    LOGE("Failed to create ASS_Track");
     return NULL;
   }
 
-  LOGD("ASS_Track created successfully");
   return reinterpret_cast<jlong>(track);
 }
 
@@ -388,9 +356,6 @@ LIBASS_FUNC(void, assFreeTrack, jlong ass_track_ptr) {
   ASS_Track *track = reinterpret_cast<ASS_Track *>(ass_track_ptr);
   if (track) {
     ass_free_track(track);
-    LOGD("ASS_Track destroyed successfully");
-  } else {
-    LOGE("ASS_Track pointer is null during destruction");
   }
 }
 
@@ -398,14 +363,12 @@ LIBASS_FUNC(void, assFreeTrack, jlong ass_track_ptr) {
 LIBASS_FUNC(void, assProcessCodecPrivate, jlong ass_track_ptr, jbyteArray data) {
   ASS_Track *track = reinterpret_cast<ASS_Track *>(ass_track_ptr);
   if (!track) {
-    LOGE("ASS_Track pointer is null when processing codec private data");
     return;
   }
 
   // Convert jbyteArray to const char *
   jbyte *data_bytes = env->GetByteArrayElements(data, nullptr);
   if (!data_bytes) {
-    LOGE("Failed to get codec private data from byte array");
     return;
   }
   jsize data_size = env->GetArrayLength(data);
@@ -415,14 +378,10 @@ LIBASS_FUNC(void, assProcessCodecPrivate, jlong ass_track_ptr, jbyteArray data) 
 
   // Release the JNI resources
   env->ReleaseByteArrayElements(data, data_bytes, JNI_OK);
-  LOGD("Codec private data processed successfully");
 }
 
 
-/**
- * Renders a frame for a specific track at the given timestamp.
- * This implementation includes diagnostic logging to help debug rendering issues.
- */
+// Renders a frame for a specific track at the given timestamp.
 LIBASS_FUNC(jobject, assRenderFrame, jlong ass_renderer_ptr, jlong ass_track_ptr, jint frame_width, jint frame_height, jlong time_ms, jint video_color_space, jint video_color_range) {
   jclass resultClass = env->FindClass("androidx/media3/decoder/ass/AssRenderResult");
   jmethodID resultConstructor = env->GetMethodID(resultClass, "<init>", "(Landroid/graphics/Bitmap;Z)V");
@@ -431,7 +390,6 @@ LIBASS_FUNC(jobject, assRenderFrame, jlong ass_renderer_ptr, jlong ass_track_ptr
   ASS_Track *track = reinterpret_cast<ASS_Track *>(ass_track_ptr);
 
   if (!renderer || !track) {
-    LOGE("Invalid pointers: renderer=%p, track=%p", renderer, track);
     return env->NewObject(resultClass, resultConstructor, (jobject) nullptr, JNI_FALSE);
   }
 
@@ -527,7 +485,6 @@ LIBASS_FUNC(jobject, assRenderFrame, jlong ass_renderer_ptr, jlong ass_track_ptr
   void *pixels = nullptr;
   if (AndroidBitmap_getInfo(env, bitmap, &bitmapInfo) != ANDROID_BITMAP_RESULT_SUCCESS ||
       AndroidBitmap_lockPixels(env, bitmap, &pixels) != ANDROID_BITMAP_RESULT_SUCCESS) {
-    LOGE("Unable to lock bitmap pixels");
     return env->NewObject(resultClass, resultConstructor, (jobject) nullptr, changedSinceLastCall);
   }
 
