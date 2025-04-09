@@ -108,7 +108,6 @@ public class LibassJNI {
       throw new RuntimeException("Failed to create ASS_Track");
     }
     assTrackPtrs.put(formatId, trackPtr);
-    Log.d(TAG, "Created new track with ID: " + formatId);
   }
 
   /**
@@ -119,7 +118,6 @@ public class LibassJNI {
   public void releaseTrack(String trackId) {
     Long trackPtr = assTrackPtrs.remove(trackId);
     assFreeTrack(trackPtr);
-    Log.d(TAG, "Released track with ID: " + trackId);
   }
 
   /**
@@ -190,7 +188,6 @@ public class LibassJNI {
   public void processCodecPrivate(String trackId, byte[] data) {
     Long trackPtr = assTrackPtrs.get(trackId);
     assProcessCodecPrivate(trackPtr, data);
-    Log.d(TAG, "Processed codec private data for track ID: " + trackId);
   }
 
   /**
@@ -230,7 +227,6 @@ public class LibassJNI {
       for (Map.Entry<String, Long> entry : assTrackPtrs.entrySet()) {
         if (entry.getValue() != 0) {
           assFreeTrack(entry.getValue());
-          Log.d(TAG, "Finalized track: " + entry.getKey());
         }
       }
 
