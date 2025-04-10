@@ -28,13 +28,16 @@ import androidx.annotation.Nullable;
 import androidx.media3.common.C;
 import androidx.media3.common.Format;
 import androidx.media3.common.MimeTypes;
+import androidx.media3.common.VideoSize;
 import androidx.media3.common.text.Cue;
 import androidx.media3.common.text.CueGroup;
 import androidx.media3.common.util.Log;
+import androidx.media3.common.util.Size;
 import androidx.media3.common.util.UnstableApi;
 import androidx.media3.common.util.Util;
 import androidx.media3.decoder.DecoderInputBuffer;
 import androidx.media3.exoplayer.BaseRenderer;
+import androidx.media3.exoplayer.ExoPlaybackException;
 import androidx.media3.exoplayer.FormatHolder;
 import androidx.media3.exoplayer.Renderer;
 import androidx.media3.exoplayer.RendererCapabilities;
@@ -570,6 +573,31 @@ public final class TextRenderer extends BaseRenderer implements Callback {
         return true;
       default:
         throw new IllegalStateException();
+    }
+  }
+
+  @Override
+  public void handleMessage(@MessageType int messageType, @Nullable Object message)
+      throws ExoPlaybackException {
+    switch (messageType) {
+      case MSG_SET_VIDEO_OUTPUT_RESOLUTION:
+        Size surfaceSize = ((Size) message);
+        Log.d("Jeremie", "Taille surface - " + surfaceSize);
+        break;
+      case MSG_EVENT_VIDEO_SIZE_CHANGED:
+        VideoSize size = (VideoSize) message;
+        Log.d("Jeremie", "Taille vidéo - height=" + size.height + " width=" + size.width);
+        break;
+      case MSG_EVENT_VIDEO_FORMAT_CHANGED:
+        Format videoFormat = (Format) message;
+        if (videoFormat.colorInfo != null) {
+          Log.d("Jeremie", "Couleur vidéo" + videoFormat.colorInfo.toString());
+        } else {
+          Log.d("Jeremie", "Couleur vidéo appelé, mais colorInfo null");
+        }
+        break;
+      default:
+        super.handleMessage(messageType, message);
     }
   }
 
