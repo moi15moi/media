@@ -75,7 +75,7 @@ public class PlayerActivity extends AppCompatActivity
 
   protected PlayerView playerView;
   protected LinearLayout debugRootView;
-  protected TextView debugTextView;
+//  protected TextView debugTextView;
   protected @Nullable ExoPlayer player;
 
   private boolean isShowingTrackSelectionDialog;
@@ -83,7 +83,7 @@ public class PlayerActivity extends AppCompatActivity
   private DataSource.Factory dataSourceFactory;
   private List<MediaItem> mediaItems;
   private TrackSelectionParameters trackSelectionParameters;
-  private DebugTextViewHelper debugViewHelper;
+//  private DebugTextViewHelper debugViewHelper;
   private Tracks lastSeenTracks;
   private boolean startAutoPlay;
   private int startItemIndex;
@@ -107,7 +107,7 @@ public class PlayerActivity extends AppCompatActivity
 
     setContentView();
     debugRootView = findViewById(R.id.controls_root);
-    debugTextView = findViewById(R.id.debug_text_view);
+//    debugTextView = findViewById(R.id.debug_text_view);
     selectTracksButton = findViewById(R.id.select_tracks_button);
     selectTracksButton.setOnClickListener(this);
 
@@ -281,8 +281,8 @@ public class PlayerActivity extends AppCompatActivity
       player.setPlayWhenReady(startAutoPlay);
       playerView.setPlayer(player);
       configurePlayerWithServerSideAdsLoader();
-      debugViewHelper = new DebugTextViewHelper(player, debugTextView);
-      debugViewHelper.start();
+//      debugViewHelper = new DebugTextViewHelper(player, debugTextView);
+//      debugViewHelper.start();
     }
     boolean haveStartPosition = startItemIndex != C.INDEX_UNSET;
     if (haveStartPosition) {
@@ -385,8 +385,8 @@ public class PlayerActivity extends AppCompatActivity
       updateTrackSelectorParameters();
       updateStartPosition();
       releaseServerSideAdsLoader();
-      debugViewHelper.stop();
-      debugViewHelper = null;
+//      debugViewHelper.stop();
+//      debugViewHelper = null;
       player.release();
       player = null;
       playerView.setPlayer(/* player= */ null);
