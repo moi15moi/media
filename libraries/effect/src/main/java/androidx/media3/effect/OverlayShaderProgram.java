@@ -48,6 +48,9 @@ import java.io.IOException;
 
   private static final int HDR_TYPE_TEXT = 2;
 
+  /** SDR overlay (e.g. TextureOverlay, BitmapOverlay without gainmap) scaled to HDR luminance. */
+  private static final int HDR_TYPE_SDR_OVERLAY = 3;
+
   // The maximum number of samplers allowed in a single GL program is 16.
   // We use one for every overlay and one for the video.
   private static final int MAX_OVERLAY_SAMPLERS = 15;
@@ -144,7 +147,8 @@ import java.io.IOException;
               GainmapUtil.setGainmapUniforms(
                   glProgram, lastGainmaps.get(texUnitIndex), texUnitIndex);
             }
-          } else if (hdrTypes[texUnitIndex - 1] == HDR_TYPE_TEXT) {
+          } else if (hdrTypes[texUnitIndex - 1] == HDR_TYPE_TEXT
+              || hdrTypes[texUnitIndex - 1] == HDR_TYPE_SDR_OVERLAY) {
             float[] luminanceMatrix = GlUtil.create4x4IdentityMatrix();
             float multiplier =
                 overlay.getOverlaySettings(presentationTimeUs).getHdrLuminanceMultiplier();
@@ -199,7 +203,8 @@ import java.io.IOException;
     }
   }
 
-  private static int[] findHdrTypes(ImmutableList<TextureOverlay> overlays) {
+  private static int[] findHdrTypes(ImmutableList<TextureOverlay> overlays)
+      throws VideoFrameProcessingException {
     int[] hdrTypes = new int[overlays.size()];
     int overlaySamplersAvailable = MAX_OVERLAY_SAMPLERS;
     for (int i = 0; i < overlays.size(); i++) {
@@ -209,13 +214,20 @@ import java.io.IOException;
         hdrTypes[i] = HDR_TYPE_TEXT;
         overlaySamplersAvailable -= 1;
       } else if (overlay instanceof BitmapOverlay) {
-        checkState(SDK_INT >= 34);
-        hdrTypes[i] = HDR_TYPE_ULTRA_HDR;
-        // Each UltraHDR overlay uses an extra texture to apply the gainmap to the base in the
-        // shader.
-        overlaySamplersAvailable -= 2;
+        BitmapOverlay bitmapOverlay = (BitmapOverlay) overlay;
+        if (SDK_INT >= 34 && bitmapOverlay.getBitmap(/* presentationTimeUs= */ 0).hasGainmap()) {
+          hdrTypes[i] = HDR_TYPE_ULTRA_HDR;
+          // Each UltraHDR overlay uses an extra texture to apply the gainmap to the base in the
+          // shader.
+          overlaySamplersAvailable -= 2;
+        } else {
+          hdrTypes[i] = HDR_TYPE_SDR_OVERLAY;
+          overlaySamplersAvailable -= 1;
+        }
       } else {
-        throw new IllegalArgumentException(overlay + " is not supported on HDR content.");
+        // Custom TextureOverlay implementations: treat as SDR overlay, scale to HDR luminance.
+        hdrTypes[i] = HDR_TYPE_SDR_OVERLAY;
+        overlaySamplersAvailable -= 1;
       }
       if (overlaySamplersAvailable < 0) {
         throw new IllegalArgumentException(
@@ -298,7 +310,8 @@ import java.io.IOException;
               .append(formatInvariant("uniform float uDisplayRatioHdr%d;\n", texUnitIndex))
               .append(formatInvariant("uniform float uDisplayRatioSdr%d;\n", texUnitIndex))
               .append("\n");
-        } else if (hdrTypes[texUnitIndex - 1] == HDR_TYPE_TEXT) {
+        } else if (hdrTypes[texUnitIndex - 1] == HDR_TYPE_TEXT
+            || hdrTypes[texUnitIndex - 1] == HDR_TYPE_SDR_OVERLAY) {
           shader.append(formatInvariant("uniform mat4 uLuminanceMatrix%d;\n", texUnitIndex));
         }
       }
@@ -330,7 +343,8 @@ import java.io.IOException;
         if (hdrTypes[texUnitIndex - 1] == HDR_TYPE_ULTRA_HDR) {
           shader.append(replaceFormatSpecifierWithIndex(gainmapApplicationTemplate, texUnitIndex));
           overlayMixColor = "opticalBt2020OverlayColor";
-        } else if (hdrTypes[texUnitIndex - 1] == HDR_TYPE_TEXT) {
+        } else if (hdrTypes[texUnitIndex - 1] == HDR_TYPE_TEXT
+            || hdrTypes[texUnitIndex - 1] == HDR_TYPE_SDR_OVERLAY) {
           shader.append(
               replaceFormatSpecifierWithIndex(luminanceApplicationTemplate, texUnitIndex));
           overlayMixColor = "opticalOverlayColor";
